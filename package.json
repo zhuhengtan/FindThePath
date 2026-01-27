@@ -1,0 +1,14 @@
+{
+  "name": "2d-game-template",
+  "uuid": "c99b23b7-cc1b-4bf1-bed2-5b8de4e39da9",
+  "creator": {
+    "version": "3.8.7"
+  },
+  "dependencies": {
+    "js-event-bus": "^1.1.1",
+    "papaparse": "^5.5.3"
+  },
+  "devDependencies": {
+    "miniprogram-api-typings": "^5.0.0"
+  }
+}
