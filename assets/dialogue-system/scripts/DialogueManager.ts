@@ -1,11 +1,20 @@
 import EventBus from "db://assets/hunter/utils/event-bus";
+import { StorageManager } from "db://assets/hunter/utils/storage";
 import { DialogueEvents, DialogueNodeType, QuestEvents } from "../type";
 import { Dialogue } from "./entities/Dialogue";
 import { DialogueNode } from "./entities/DialogueNode";
 import { QuestManager } from "./QuestManager";
-
 import { AchievementManager } from "./AchievementManager";
 import { ConfigLoader } from "db://assets/hunter/utils/config-loader";
+
+/** 对话进度存档 key */
+const DIALOGUE_PROGRESS_KEY = "dialogue_progress";
+
+/** 对话进度存档数据 */
+export interface IDialogueProgressData {
+  dialogueId: number | string;
+  nodeId: string;
+}
 
 export class DialogueManager {
   private static _instance: DialogueManager;
@@ -402,8 +411,14 @@ export class DialogueManager {
         return;
       }
       case DialogueNodeType.Record: {
-        if (node.record) {
-          EventBus.emit(DialogueEvents.NeedUpdateRecord, node.record);
+        // 直接保存当前对话进度
+        if (this._currentDialog) {
+          const progress: IDialogueProgressData = {
+            dialogueId: this._currentDialog.id,
+            nodeId: node.id,
+          };
+          StorageManager.setItem(DIALOGUE_PROGRESS_KEY, progress);
+          console.log("[DialogueManager] Progress saved:", progress);
         }
         return;
       }
@@ -465,4 +480,27 @@ export class DialogueManager {
   get isWaitingForBattle(): boolean {
     return this._waitingForBattle;
   }
+
+  /**
+   * 获取保存的对话进度
+   */
+  getSavedProgress(): IDialogueProgressData | null {
+    return StorageManager.getItem<IDialogueProgressData>(DIALOGUE_PROGRESS_KEY, null);
+  }
+
+  /**
+   * 清除保存的对话进度
+   */
+  clearSavedProgress(): void {
+    StorageManager.removeItem(DIALOGUE_PROGRESS_KEY);
+    console.log("[DialogueManager] Progress cleared");
+  }
+
+  /**
+   * 检查是否有保存的进度
+   */
+  hasSavedProgress(): boolean {
+    return this.getSavedProgress() !== null;
+  }
 }
+
