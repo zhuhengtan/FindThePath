@@ -1,0 +1,3 @@
+id;title;entryNode@dialog_node;actors@actor;type;condition
+1;序章;d1_n1;[1];main;story.main==0 and scene=='main' and timing=='Enter'
+2;入学仪式;d2_n1;[201];main;(story.main==1 or (story.main==2 and story.mainNodeId != '')) and scene=='main' and timing=='Enter'

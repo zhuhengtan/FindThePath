@@ -5,6 +5,7 @@
     "version": "3.8.7"
   },
   "dependencies": {
+    "expr-eval": "^2.0.2",
     "js-event-bus": "^1.1.1",
     "papaparse": "^5.5.3"
   },

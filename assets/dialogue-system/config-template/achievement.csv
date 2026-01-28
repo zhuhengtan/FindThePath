@@ -1,0 +1,1 @@
+id;name;description;type@enum:achievement_type;category@enum:achievement_category;rarity@enum:achievement_rarity;icon;objectives;stages;rewards;prerequisiteAchievements;unlockLevel;points;sortOrder;hidden

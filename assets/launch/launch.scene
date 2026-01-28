@@ -188,7 +188,7 @@
     "_priority": 0,
     "_fov": 45,
     "_fovAxis": 0,
-    "_orthoHeight": 366.57844990548205,
+    "_orthoHeight": 413.47547974413646,
     "_near": 0,
     "_far": 2000,
     "_color": {
@@ -422,8 +422,8 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 359.99091741493385,
-      "height": 151.20000000000002
+      "width": 359.98975546375266,
+      "height": 151.2
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -455,7 +455,7 @@
     "_string": "游戏名",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 198.375,
+    "_actualFontSize": 175.875,
     "_fontSize": 120,
     "_fontFamily": "Arial",
     "_lineHeight": 120,
@@ -573,7 +573,7 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": -45.92187315394612,
+      "x": -45.92187315394611,
       "y": 0,
       "z": 0
     },
@@ -612,8 +612,8 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 122.67185838551512,
-      "height": 50.4
+      "width": 122.67185625999467,
+      "height": 50.400000000000006
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -645,7 +645,7 @@
     "_string": "加载中...",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 52.9,
+    "_actualFontSize": 46.9,
     "_fontSize": 32,
     "_fontFamily": "Arial",
     "_lineHeight": 40,
@@ -705,7 +705,7 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 66.33592919275756,
+      "x": 66.33592812999734,
       "y": 0,
       "z": 0
     },
@@ -777,7 +777,7 @@
     "_string": "100%",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 52.9,
+    "_actualFontSize": 46.9,
     "_fontSize": 32,
     "_fontFamily": "Arial",
     "_lineHeight": 40,
@@ -828,7 +828,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 214.51560469340737,
+      "width": 214.5156025678869,
       "height": 50
     },
     "_anchorPoint": {
