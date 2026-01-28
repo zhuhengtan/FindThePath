@@ -1,5 +1,6 @@
 // 管理器
 import { DialogueManager } from "./DialogueManager";
+import { DialogueUIManager, initDialogueUIManager } from "./DialogueUIManager";
 import { QuestManager, IQuestManagerSaveData } from "./QuestManager";
 import { AchievementManager, IAchievementManagerSaveData } from "./AchievementManager";
 import { DailyActivityManager, IDailyActivitySaveData } from "./DailyActivityManager";
@@ -28,6 +29,8 @@ export type { ITitleData, ITitleEffect } from "./entities/Title";
 
 // 管理器类导出
 export { DialogueManager } from "./DialogueManager";
+export type { IDialogueProgressData } from "./DialogueManager";
+export { DialogueUIManager, initDialogueUIManager } from "./DialogueUIManager";
 export { QuestManager } from "./QuestManager";
 export type { IQuestManagerSaveData } from "./QuestManager";
 export { AchievementManager } from "./AchievementManager";
@@ -37,6 +40,7 @@ export type { IActivityRewardConfig, IDailyActivitySaveData } from "./DailyActiv
 
 // 管理器单例
 export const dialogueManager = DialogueManager.instance;
+export const dialogueUIManager = DialogueUIManager.instance;
 export const questManager = QuestManager.instance;
 export const achievementManager = AchievementManager.instance;
 export const dailyActivityManager = DailyActivityManager.instance;

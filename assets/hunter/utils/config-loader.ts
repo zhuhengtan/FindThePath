@@ -1,4 +1,4 @@
-import { _decorator, resources, JsonAsset, TextAsset } from "cc";
+import { _decorator, resources, JsonAsset, TextAsset, assetManager, AssetManager } from "cc";
 // import { parseCSV } from "../utils";
 import Papa from "papaparse";
 import { BUILD } from "cc/env";
@@ -12,8 +12,19 @@ interface Config {
   className?: string;
 }
 
+interface LoadOptions {
+  /** 分包名称，默认使用 resources */
+  bundleName?: string;
+  /** 配置文件路径前缀，默认为 "configs" */
+  configPathPrefix?: string;
+  /** all_config.csv 文件路径（不含扩展名），默认为 "configs/all_config" */
+  allConfigPath?: string;
+}
+
 export class ConfigLoader {
-  private _entityMap = null
+  private _entityMap = null;
+  private _bundle: AssetManager.Bundle | null = null;
+  private _configPathPrefix: string = "configs";
 
   private _allTables: {
     fileName: string;
@@ -35,14 +46,52 @@ export class ConfigLoader {
     return this._instance;
   }
 
-  // 加载所有配置
-  public loadAllConfigs(entityMap, callback?: () => void): void {
-    this._entityMap = entityMap
+  /**
+   * 加载所有配置
+   * @param entityMap 实体类映射
+   * @param callback 完成回调
+   * @param options 加载选项
+   */
+  public loadAllConfigs(
+    entityMap?: any,
+    callback?: () => void,
+    options?: LoadOptions
+  ): void {
+    this._entityMap = entityMap || {};
 
+    const bundleName = options?.bundleName || "main-game";
+    const allConfigPath = options?.allConfigPath || "configs/all_config";
+    this._configPathPrefix = options?.configPathPrefix || "configs";
 
-    // 加载玩家等级配置
-    this.loadConfig(() => {
-      if (callback) callback();
+    console.log(`[ConfigLoader] Loading configs from bundle: ${bundleName}`);
+
+    // 加载分包
+    this.loadBundle(bundleName).then((bundle) => {
+      this._bundle = bundle;
+      this.loadConfig(allConfigPath, () => {
+        if (callback) callback();
+      });
+    }).catch((err) => {
+      console.error(`[ConfigLoader] Failed to load bundle: ${bundleName}`, err);
+    });
+  }
+
+  private loadBundle(bundleName: string): Promise<AssetManager.Bundle> {
+    return new Promise((resolve, reject) => {
+      // 检查是否已加载
+      const existingBundle = assetManager.getBundle(bundleName);
+      if (existingBundle) {
+        resolve(existingBundle);
+        return;
+      }
+
+      assetManager.loadBundle(bundleName, (err, bundle) => {
+        if (err || !bundle) {
+          reject(err);
+          return;
+        }
+        resolve(bundle);
+      });
     });
   }
 
@@ -73,12 +122,14 @@ export class ConfigLoader {
     }
   }
 
-  private loadConfig(callback?: () => void): void {
+  private loadConfig(allConfigPath: string, callback?: () => void): void {
     this.loadRes({
-      fileName: "configs/all_config",
+      fileName: allConfigPath,
     })
       .then((allConfig) => {
         this._allTables = allConfig.detail;
+        console.log(`[ConfigLoader] Found ${this._allTables.length} config tables`);
+
         const promises = [];
         this._allTables.forEach((config) => {
           const { fileName, primaryKey, tableName, description } = config;
@@ -97,12 +148,14 @@ export class ConfigLoader {
 
           this.convertAllToInstances();
 
-          console.log("[config-loader], 全部配置", this._allConfigs)
-          console.log("[config-loader], 全部配置Map", this._allConfigsMap)
+          console.log("[ConfigLoader] 全部配置", this._allConfigs);
+          console.log("[ConfigLoader] 全部配置Map", this._allConfigsMap);
           if (callback) callback();
         });
       })
-      .catch(() => { });
+      .catch((err) => {
+        console.error("[ConfigLoader] Failed to load all_config:", err);
+      });
   }
 
   /**
@@ -140,11 +193,20 @@ export class ConfigLoader {
   }
 
   private loadRes(config: Config): Promise<any> {
+    const bundle = this._bundle;
+
+    if (!bundle) {
+      console.error("[ConfigLoader] Bundle not loaded");
+      return Promise.reject(new Error("Bundle not loaded"));
+    }
+
     if (BUILD) {
       return new Promise((resolve, reject) => {
         const jsonPath = config.fileName.replace(/^configs\//, "configs_json/");
-        resources.load(jsonPath, JsonAsset, (err, asset) => {
+        console.log(`[ConfigLoader] Loading JSON: ${jsonPath}`);
+        bundle.load(jsonPath, JsonAsset, (err, asset) => {
           if (err) {
+            console.error(`[ConfigLoader] Failed to load: ${jsonPath}`, err);
             reject(err);
           } else {
             if (config.primaryKey) {
@@ -170,8 +232,10 @@ export class ConfigLoader {
     }
 
     return new Promise((resolve, reject) => {
-      resources.load(config.fileName, TextAsset, (err, asset) => {
+      console.log(`[ConfigLoader] Loading CSV: ${config.fileName}`);
+      bundle.load(config.fileName, TextAsset, (err, asset) => {
         if (err) {
+          console.error(`[ConfigLoader] Failed to load: ${config.fileName}`, err);
           reject(err);
         } else {
           const res = Papa.parse(asset.text, {

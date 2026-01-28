@@ -14,21 +14,26 @@
         "value": 1
       },
       {
+        "id": 6,
+        "name": "Dialogue",
+        "value": 2
+      },
+      {
         "id": 2,
         "name": "Popup",
-        "value": 2
+        "value": 3
       },
       {
         "id": 3,
         "name": "Toast",
-        "value": 3
+        "value": 4
       },
       {
         "id": 4,
         "name": "Loading",
-        "value": 4
+        "value": 5
       }
     ],
-    "increaseId": 5
+    "increaseId": 6
   }
 }

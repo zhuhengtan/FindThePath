@@ -1,4 +1,4 @@
-id;dialogId@dialog;nextType;nextNode@dialog_node;type;actor@actor;content;choices;quests@quest;achievements@achievement;items@item;enemy@enemy;record;autoDuration;
+id;dialogId@dialogue;nextType;nextNode@dialogue_node;type;actor@actor;content;choices;quests@quest;achievements@achievement;items@item;enemy@enemy;record;autoDuration;
 d1_n1;1;manual;d1_n2;systemBlack;1;"{""text"":""奇妙世界是一个因「元素裂变」被重塑数次的多纪元世界。整个世界经历过三次裂解和重聚，此次重聚后，东、西两块大陆的人类分别学会了掌控两种不同形态的元素。为了共同抵抗裂解产生的各种异次元生物和变异生物，双方合作创办了「元素魔法学院」来培养能熟练运用元素魔法的魔法师。"",""textAnimation"":""typeWriter""}";;;;;;;;
 d1_n2;1;manual;d1_n3;systemBlack;1;"{""text"":""而你，是第一批被选中的一年级新生，你不远万里来到学院所在的「衡枢城」。现在，请你选择你想要加入的学院。"",""textAnimation"":""typeWriter""}";;;;;;;;
 d1_n3;1;manual;;systemBlack;1;"{""image"":[""main/1/elements"",1280,768],""text"":""请选择你的学院\n东方元素：金、木、水、火、土\n西方元素：风、雷、光、暗、冰""}";"{""layout"":""horizontal"",""choices"":[{""text"":""西方"",""type"":""toast"",""data"":{""toast"":""西方学院的导师由于风暴，暂时还没赶来""}},{""text"":""东方"",""type"":""node"",""data"":{""node"":""d1_n4""}}]}";;;;;;;

@@ -3,6 +3,7 @@ import { ConfigLoader } from "db://assets/hunter/utils/config-loader";
 import { StorageManager } from "db://assets/hunter/utils/storage";
 import {
   initAndLoadDialogSystem,
+  initDialogueUIManager,
   questManager,
   achievementManager,
   IDialogSystemSaveData,
@@ -30,25 +31,38 @@ export class Main extends Component {
   private async initGame() {
     console.log("[Main] Initializing game...");
 
-    // 1. 加载配置
-    ConfigLoader.instance.loadAllConfigs(ENTITY_MAP, () => {
-      console.log("[Main] Configs loaded");
+    // 1. 初始化 UI 管理器（并行）
+    await Promise.all([
+      initDialogueUIManager(),
+    ]);
+    console.log("[Main] UI managers initialized");
 
-      // 2. 从本地存储获取对话系统存档数据
-      const saveData = StorageManager.getItem<IDialogSystemSaveData>(
-        DIALOG_SYSTEM_SAVE_KEY,
-        null
-      );
-
-      // 3. 初始化对话系统
-      initAndLoadDialogSystem(saveData);
-
-      // 4. 加载任务配置（业务层控制）
-      questManager.loadDailyQuests();
-      questManager.loadMainQuests();
-
-      console.log("[Main] Game initialized");
+    // 2. 加载配置（等待完成）
+    await new Promise<void>((resolve) => {
+      ConfigLoader.instance.loadAllConfigs(ENTITY_MAP, () => {
+        console.log("[Main] Configs loaded");
+        resolve();
+      }, {
+        bundleName: "main-game",
+        configPathPrefix: "configs",
+        allConfigPath: "configs/all_config",
+      });
     });
+
+    // 3. 从本地存储获取对话系统存档数据
+    const saveData = StorageManager.getItem<IDialogSystemSaveData>(
+      DIALOG_SYSTEM_SAVE_KEY,
+      null
+    );
+
+    // 4. 初始化对话系统
+    initAndLoadDialogSystem(saveData);
+
+    // 5. 加载任务配置（业务层控制）
+    questManager.loadDailyQuests();
+    questManager.loadMainQuests();
+
+    console.log("[Main] Game initialized");
   }
 
   update(deltaTime: number) { }

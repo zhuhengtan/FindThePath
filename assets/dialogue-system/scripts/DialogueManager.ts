@@ -38,14 +38,21 @@ export class DialogueManager {
     });
   }
   start(dialogId: number | string): void {
+    console.log("[DialogueManager] start() called with dialogId:", dialogId);
     const dialog = ConfigLoader.instance.getConfigByTableNameAndKey(
       "dialogue",
       dialogId
     ) as Dialogue;
-    if (!dialog) return;
+    console.log("[DialogueManager] dialog from config:", dialog);
+    if (!dialog) {
+      console.warn("[DialogueManager] No dialog found for id:", dialogId);
+      return;
+    }
     this._currentDialog = dialog;
     this._dialogCompletedEmitted = false;
+    console.log("[DialogueManager] Emitting DialogueStart event");
     EventBus.emit(DialogueEvents.DialogueStart, dialog);
+    console.log("[DialogueManager] Calling gotoNode with entryNode:", dialog.entryNode);
     this.gotoNode(dialog.entryNode);
   }
   startAtNodeWithoutEffects(
