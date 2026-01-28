@@ -1,0 +1,580 @@
+import {
+  _decorator,
+  Component,
+  Node,
+  director,
+  Prefab,
+  instantiate,
+  resources,
+} from "cc";
+import { ConfigLoader } from "db://assets/hunter/utils/config-loader";
+import EventBus from "db://assets/hunter/utils/event-bus";
+import { DialogEvents, QuestEvents, AchievementEvents } from "db://assets/dialogue-system/type";
+import { BattleMode, Events } from "db://assets/scripts/types/enum";
+import { tools } from "../tools";
+import { RedDotManager, RedDotType } from "../tools/RedDotManager";
+import { RoomEvents } from "../utils/room-manager";
+import { Player } from "../entity/Player";
+import {
+  buildPlayerFromData,
+  preparePlayerForBattle,
+} from "../../resources/prefabs/Battle/BattleUtil";
+import { BattleManager } from "db://assets/resources/prefabs/Battle/BattleManager";
+import { applyHumanLikeStatsToEnemy } from "db://assets/resources/prefabs/Battle/HumanLikeAIManager";
+
+import { Instance } from "db://assets/scripts/entity/Instance";
+import { InstanceDetail } from "db://assets/scripts/entity/InstanceDetail";
+import { Enum } from "db://assets/scripts/entity/Enum";
+import { EnemySkill } from "db://assets/scripts/entity/EnemySkill";
+import { Enemy } from "db://assets/scripts/entity/Enemy";
+import { Buff } from "db://assets/scripts/entity/Buff";
+import { Effect } from "db://assets/scripts/entity/Effect";
+import { PlayerSkill } from "db://assets/scripts/entity/PlayerSkill";
+import { PlayerCardManager } from "db://assets/resources/prefabs/Battle/PlayerCardManager";
+import { AllCards, AD_TEMPLATE_CONFIGS, applyWorldGradeStatMultiplier, getWorldGradeConfig } from "db://assets/scripts/Common";
+import { ElementType } from "db://assets/scripts/types/enum";
+import { Actor } from "db://assets/dialogue-system/scripts/entities/Actor";
+import { Dialog } from "db://assets/dialogue-system/scripts/entities/Dialog";
+import { DialogNode } from "db://assets/dialogue-system/scripts/entities/DialogNode";
+import { Quest } from "db://assets/dialogue-system/scripts/entities/Quest";
+import { Achievement } from "db://assets/dialogue-system/scripts/entities/Achievement";
+import { Title } from "db://assets/dialogue-system/scripts/entities/Title";
+import {
+  initAndLoadDialogSystem,
+  destroyDialogSystem,
+} from "db://assets/dialogue-system/scripts";
+import { QuestManager } from "db://assets/dialogue-system/scripts/QuestManager";
+import { AchievementManager } from "db://assets/dialogue-system/scripts/AchievementManager";
+import { DailyActivityManager } from "db://assets/dialogue-system/scripts/DailyActivityManager";
+import { WECHAT } from "cc/env";
+
+const CLASS_MAP = {
+  Instance,
+  Effect,
+  Enum,
+  InstanceDetail,
+  EnemySkill,
+  Enemy,
+  Buff,
+  Actor,
+  Dialog,
+  DialogNode,
+  Quest,
+  Achievement,
+  Title,
+  PlayerSkill,
+};
+
+const { ccclass, property } = _decorator;
+
+@ccclass("Global")
+export class Global extends Component {
+  @property(Node)
+  persistCanvasNode: Node = null;
+
+  @property(Node)
+  battleContainer: Node = null;
+
+  private _onQuestDataChangedHandler = () => {
+    this.saveQuestAndActivityToRecord();
+  };
+
+  private _onAchievementUnlockedHandler = () => {
+    this.saveQuestAndActivityToRecord();
+    // 刷新成就红点，确保从其他场景返回时红点正确显示
+    RedDotManager.instance.refresh(RedDotType.Achievement);
+  };
+
+  private _onDialogEndedHandler = (dialog: any) => {
+    try {
+      if (!dialog || dialog.type !== "sub") return;
+      const content: any = tools.storage.currentRecord?.content;
+      if (!content) return;
+      const id = Number(dialog.id);
+      if (!Number.isFinite(id)) return;
+      const viewed: number[] = Array.isArray(content.viewedDialogs)
+        ? content.viewedDialogs
+        : [];
+      if (viewed.includes(id)) return;
+      tools.storage.updateCurrentRecord({
+        viewedDialogs: [...viewed, id],
+      } as any);
+    } catch { }
+  };
+
+  private saveQuestAndActivityToRecord(): void {
+    try {
+      if (!tools.storage.currentRecord?.content) return;
+
+      // 直接使用新格式的存档数据，移除冗余的旧格式
+      const questSaveData = QuestManager.instance.toSaveData();
+      const activitySaveData = DailyActivityManager.instance.toSaveData();
+
+      tools.storage.updateCurrentRecord({
+        quests: questSaveData,
+        dailyActivity: activitySaveData,
+        achievement: AchievementManager.instance.toSaveData(),
+      });
+    } catch { }
+  }
+
+  protected onLoad(): void {
+    ConfigLoader.instance.loadAllConfigs(CLASS_MAP, () => {
+      const content: any = tools.storage.currentRecord?.content;
+      if (content) {
+        initAndLoadDialogSystem({
+          quests: content?.quests,
+          achievement: content?.achievement,
+          dailyActivity: content?.dailyActivity,
+        });
+      }
+    });
+
+
+    EventBus.on(DialogEvents.NeedLoadScene, (scene) =>
+      tools.nav.loadScene(scene)
+    );
+    EventBus.on(DialogEvents.NeedPlaySoundEffect, (sfx) =>
+      tools.sound.playSFX(sfx)
+    );
+    EventBus.on(DialogEvents.NeedUpdateRecord, (record) =>
+      tools.storage.updateCurrentRecord(record)
+    );
+    EventBus.on(DialogEvents.NeedShowToast, (msg) =>
+      tools.toast.showToast(msg)
+    );
+    // DialogEvents.NeedLoadBattle (ds-need-load-battle) 用于对话系统触发的战斗
+    EventBus.on(DialogEvents.NeedLoadBattle, (payload: any) =>
+      this.onNeedLoadBattle(payload, payload?.source || "story")
+    );
+    EventBus.on(DialogEvents.GainedItems, this.onGainedItems);
+    EventBus.on(DialogEvents.DialogEnd, this._onDialogEndedHandler);
+    // Events.NeedLoadBattle (need-load-battle) 用于其他地方（如爬塔）触发的战斗
+    EventBus.on(Events.NeedLoadBattle, this.onNeedLoadBattle);
+    EventBus.on(Events.BattleSuccess, this.onBattleVictory);
+    EventBus.on(Events.BattleFailed, this.onBattleFailed);
+
+    EventBus.on(QuestEvents.QuestAccepted, this._onQuestDataChangedHandler);
+    EventBus.on(QuestEvents.QuestProgressUpdated, this._onQuestDataChangedHandler);
+    EventBus.on(QuestEvents.QuestCompleted, this._onQuestDataChangedHandler);
+    EventBus.on(QuestEvents.DailyQuestsReset, this._onQuestDataChangedHandler);
+    EventBus.on(QuestEvents.WeeklyQuestsReset, this._onQuestDataChangedHandler);
+    EventBus.on(QuestEvents.MonthlyQuestsReset, this._onQuestDataChangedHandler);
+    EventBus.on(QuestEvents.ActivityPointsUpdated, this._onQuestDataChangedHandler);
+    EventBus.on(QuestEvents.ActivityRewardClaimed, this._onQuestDataChangedHandler);
+    // 成就解锁时保存存档并刷新红点
+    EventBus.on(AchievementEvents.AchievementUnlocked, this._onAchievementUnlockedHandler);
+    // 任务奖励发放
+    EventBus.on(QuestEvents.QuestRewardsGranted, this.onQuestRewardsGranted);
+
+    if (WECHAT) {
+      /**
+       * 分享设置
+       */
+      // @ts-ignore
+      wx.onShareAppMessage(() => {
+        return {
+          title: "和我一起使用元素魔法守护奇妙世界！",
+          imageUrl:
+            "https://games-1304070694.cos.ap-shanghai.myqcloud.com/elemental-magic/common/share_cover.jpeg",
+        };
+      });
+
+      // 热启动处理
+      // @ts-ignore
+      wx.onShow((res: any) => {
+        const query = (res && res.query) || {};
+        if (query && query.mode === "room-invite" && query.accessInfo) {
+          const access = String(query.accessInfo);
+          const hasRecord = !!tools.storage.currentRecord;
+          if (!hasRecord) {
+            tools.storage.setItem("PENDING_ROOM_INVITE", {
+              accessInfo: access,
+              mode: "room-invite",
+              gameMode: String(query.gameMode || ""),
+            });
+            tools.modal?.alert({
+              title: "好友房间邀请",
+              content: "请在开始界面选择一个存档以加入房间",
+            });
+          } else {
+            tools.modal?.confirm({
+              title: "好友房间邀请",
+              content: "是否加入好友的房间？",
+              confirmText: "加入",
+              cancelText: "稍后",
+              onConfirm: () => {
+                tools.storage.setItem("ROOM_INVITE_ACCESS", access);
+                tools.storage.setItem(
+                  "PVP_ROOM_MODE",
+                  String(query.gameMode || "")
+                );
+                tools.storage.setItem("INVITE_HANDLED", true);
+                try {
+                  const scene = director.getScene();
+                  const name = scene?.name?.toLowerCase() || "";
+                  if (name === "pvp-room") {
+                    EventBus.emit(RoomEvents.InviteAccessReady);
+                  } else {
+                    tools.nav.loadScene("pvp-room");
+                  }
+                } catch {
+                  tools.nav.loadScene("pvp-room");
+                }
+              },
+            });
+          }
+        }
+      });
+      // 冷启动处理
+      // @ts-ignore
+      const launch = wx.getLaunchOptionsSync && wx.getLaunchOptionsSync();
+      const q = (launch && launch.query) || {};
+      if (q && q.mode === "room-invite" && q.accessInfo) {
+        const access = String(q.accessInfo);
+        const gm = String((q as any).gameMode || "");
+        tools.storage.setItem("PENDING_ROOM_INVITE", {
+          accessInfo: access,
+          mode: "room-invite",
+          gameMode: gm,
+        });
+      }
+    }
+  }
+
+  protected onDestroy(): void {
+    // 销毁对话系统（包括任务、成就、贡献值管理器）
+    destroyDialogSystem();
+
+    EventBus.off(DialogEvents.NeedLoadScene);
+    EventBus.off(DialogEvents.NeedPlaySoundEffect);
+    EventBus.off(DialogEvents.NeedUpdateRecord);
+    EventBus.off(DialogEvents.NeedShowToast);
+    EventBus.off(DialogEvents.NeedLoadBattle);
+    EventBus.off(DialogEvents.GainedItems);
+    EventBus.off(DialogEvents.DialogEnd);
+    EventBus.off(Events.NeedLoadBattle);
+    EventBus.off(Events.BattleSuccess);
+    EventBus.off(Events.BattleFailed);
+
+    EventBus.detach(QuestEvents.QuestAccepted, this._onQuestDataChangedHandler);
+    EventBus.detach(QuestEvents.QuestProgressUpdated, this._onQuestDataChangedHandler);
+    EventBus.detach(QuestEvents.QuestCompleted, this._onQuestDataChangedHandler);
+    EventBus.detach(QuestEvents.DailyQuestsReset, this._onQuestDataChangedHandler);
+    EventBus.detach(QuestEvents.WeeklyQuestsReset, this._onQuestDataChangedHandler);
+    EventBus.detach(QuestEvents.MonthlyQuestsReset, this._onQuestDataChangedHandler);
+    EventBus.detach(QuestEvents.ActivityPointsUpdated, this._onQuestDataChangedHandler);
+    EventBus.detach(QuestEvents.ActivityRewardClaimed, this._onQuestDataChangedHandler);
+    EventBus.detach(AchievementEvents.AchievementUnlocked, this._onAchievementUnlockedHandler);
+    EventBus.detach(QuestEvents.QuestRewardsGranted, this.onQuestRewardsGranted);
+
+    try {
+      // @ts-ignore
+      if (typeof wx !== "undefined") {
+        // @ts-ignore
+        wx.offShow && wx.offShow(() => { });
+      }
+    } catch { }
+  }
+
+  protected start(): void {
+    if (this.persistCanvasNode) {
+      director.addPersistRootNode(this.persistCanvasNode);
+      this.ensureManagerOrder();
+    }
+    try {
+      const rewardedIds = AD_TEMPLATE_CONFIGS.filter(
+        (c) => c.adType === "rewarded" && !!c.adUnitId
+      ).map((c) => c.adUnitId);
+      const interstitialIds = AD_TEMPLATE_CONFIGS.filter(
+        (c) => c.adType === "interstitial" && !!c.adUnitId
+      ).map((c) => c.adUnitId);
+      const nativeTemplates = AD_TEMPLATE_CONFIGS.filter(
+        (c) => c.adType === "native"
+      );
+      tools.ad.init({
+        rewardedVideoAdIds: rewardedIds,
+        interstitialAdIds: interstitialIds,
+        nativeTemplates,
+      });
+    } catch { }
+    // 延迟到下一帧执行场景切换，确保 SceneLoading 组件的 onLoad 有时间执行
+    this.scheduleOnce(() => {
+      director.loadScene("start");
+    }, 0);
+  }
+
+  private onGainedItems = (payload: any) => {
+    const tuples: [number | string, number, number?][] = Array.isArray(payload)
+      ? payload.map((x: any) => {
+        if (Array.isArray(x)) {
+          // 支持数字和字符串ID
+          const rawId = x[0];
+          const id = typeof rawId === 'string' && isNaN(Number(rawId)) ? rawId : Number(rawId);
+          const c = Math.max(1, Number(x[1]) || 1);
+          const r = x.length > 2 ? Number(x[2]) : undefined;
+          return [id, c, r];
+        }
+        // 支持对象格式的item
+        const rawId = x?.item?.id ?? x?.id;
+        const id = typeof rawId === 'string' && isNaN(Number(rawId)) ? rawId : Number(rawId);
+        const c = Math.max(1, Number(x?.count) || 1);
+        return [id, c];
+      })
+      : [];
+    tools.gainItem?.show(tuples as any);
+  };
+
+  /**
+   * 处理任务奖励发放事件
+   * 将 QuestReward[] 转换为 GainItemManager 所需的格式并展示
+   */
+  private onQuestRewardsGranted = (_quest: any, rewards: any[]) => {
+    if (!Array.isArray(rewards) || rewards.length === 0) return;
+
+    // QuestReward 格式: { type, rewardId, count }
+    // GainItemManager.show 需要的格式: [[itemId, count], ...]
+    const tuples: [number, number][] = [];
+    for (const reward of rewards) {
+      if (!reward) continue;
+      // 目前只处理物品类型的奖励 (type === 'item' 或 QuestRewardType.Item)
+      const typeKey = reward.type?.key || reward.type;
+      if (typeKey === "item" || typeKey === 0) {
+        const id = Number(reward.rewardId);
+        const count = Math.max(1, Number(reward.count) || 1);
+        if (Number.isFinite(id) && id > 0) {
+          tuples.push([id, count]);
+        }
+      }
+      // 其他类型的奖励（如经验、金币等）也可以在这里扩展处理
+    }
+
+    if (tuples.length > 0) {
+      tools.gainItem?.show(tuples, {
+        title: "任务奖励"
+      });
+    }
+  };
+
+  private onBattleVictory = () => {
+    if (this._currentBattleFrom === "story") {
+      EventBus.emit(DialogEvents.BattleVictory);
+      this._currentBattleFrom = "";
+    } else if (this._currentBattleFrom === "help") {
+      // TODO: 残局模式胜利后，记录完成状态并返回或继续下一关
+    } else {
+      // TODO: 其他模式的默认胜利处理
+    }
+  };
+
+  private onBattleFailed = (_payload?: any) => {
+    if (this._currentBattleFrom === "story") {
+      try {
+        tools.toast?.showToast("战斗失败");
+      } catch { }
+      this._currentBattleFrom = "";
+    } else if (this._currentBattleFrom === "help") {
+      // TODO: 残局模式失败后的处理
+      this._currentBattleFrom = "";
+    } else {
+      // 其他模式默认失败处理（可扩展）
+    }
+  };
+
+  private _childOrder: string[] = [];
+
+  private ensureManagerOrder(): void {
+    if (!this.persistCanvasNode) return;
+    const canvas = this.persistCanvasNode;
+    if (this._childOrder.length === 0) {
+      this._childOrder = canvas.children.map((c) => c.name);
+    }
+    this._childOrder.forEach((name, idx) => {
+      const child = canvas.getChildByName(name);
+      if (child) {
+        child.setSiblingIndex(idx);
+      }
+    });
+  }
+
+  private _battleOverlayNode: Node = null;
+  private _currentBattleFrom: "story" | "help" | "tower" | "" = "";
+
+  private onNeedLoadBattle = (
+    payload: {
+      enemy?: Enemy;
+      player?: Player;
+      drawOrderIds?: number[];
+      enemies?: Enemy[];
+    },
+    from: "story" | "help" | "tower"
+  ) => {
+    if (!this.battleContainer) return;
+    this._currentBattleFrom = from;
+    const sceneName = director.getScene()?.name || "";
+    if (sceneName && sceneName.toLowerCase() === "instance-detail") return;
+    const rec = tools.storage.currentRecord;
+    const saved = rec && rec.content?.user;
+    const player = buildPlayerFromData({
+      level: saved.level,
+      strength: saved.strength,
+      agility: saved.agility,
+      intelligence: saved.intelligence,
+      nickname: tools.storage.allRecords.wechatUser?.nickName,
+      avatarUrl: tools.storage.allRecords.wechatUser?.avatarUrl,
+    });
+    preparePlayerForBattle(player, { source: "dialog", clearBuffs: true });
+    // 处理 enemies 数组（年级挑战等）或单个 enemy
+    const enemies: Enemy[] = [];
+    const enemiesPayload = (payload as any)?.enemies;
+    const singleEnemy = (payload as any)?.enemy;
+    const shouldApplyWorldScaling = from !== "tower" && !(payload as any)?.isGradeChallenge;
+    const worldLevel = tools.storage?.getWorldLevel?.() || 1;
+    const gradeConfig = getWorldGradeConfig(worldLevel);
+
+    if (Array.isArray(enemiesPayload) && enemiesPayload.length > 0) {
+      // 从 enemies 数组创建敌人
+      for (const ep of enemiesPayload) {
+        const enemy = Enemy.normalize(ep);
+        if (enemy) {
+          // 应用 humanLike 属性（如果是 humanLike 类型）
+          const isHumanLike = applyHumanLikeStatsToEnemy(enemy);
+          if (shouldApplyWorldScaling && !isHumanLike && gradeConfig.strength !== 1.0) {
+            applyWorldGradeStatMultiplier(enemy, gradeConfig.strength);
+          }
+          enemies.push(enemy);
+        }
+      }
+    } else if (singleEnemy) {
+      // 单个 enemy
+      const enemy = Enemy.normalize(singleEnemy);
+      if (enemy) {
+        const isHumanLike = applyHumanLikeStatsToEnemy(enemy);
+        if (shouldApplyWorldScaling && !isHumanLike && gradeConfig.strength !== 1.0) {
+          applyWorldGradeStatMultiplier(enemy, gradeConfig.strength);
+        }
+        enemies.push(enemy);
+      }
+    }
+
+    const showBattle = (prefab: Prefab) => {
+      if (!this._battleOverlayNode || !this._battleOverlayNode.isValid) {
+        this._battleOverlayNode = instantiate(prefab);
+        this.battleContainer.addChild(this._battleOverlayNode);
+      }
+      let mgr = this._battleOverlayNode.getComponent(BattleManager);
+      if (!mgr) mgr = this._battleOverlayNode.addComponent(BattleManager);
+      // 先设置Actors，再激活以确保 BattleStart 后有完整注册的角色
+      this._battleOverlayNode.active = false;
+      enemies.forEach((e) => {
+        if (!e) return;
+        e.hp = e.maxHp;
+        e.ap = e.maxAp;
+        e.shield = 0;
+      });
+      if (mgr) {
+        mgr.initBattle({
+          battleMode: from === "tower" ? BattleMode.PVE : BattleMode.Story,
+          source: from,
+          players: [player],
+          enemies: enemies.length ? enemies : [],
+          autoHideOnFinish: true,
+        });
+        // 设置开局抽牌顺序
+        const getStoryDrawOrder = (): number[] => {
+          try {
+            const rec = tools.storage.currentRecord;
+            const content: any = rec?.content || {};
+            const levelMap = content?.skillLevel || {};
+            const learnedMap = content?.learnedSkills || {};
+            const skills: PlayerSkill[] =
+              ConfigLoader.instance.getConfigsByTableName("player_skill");
+            const learned = skills.filter(
+              (s) => (Number(levelMap[s.id]) || 0) > 0 || !!learnedMap[s.id]
+            );
+            if (!learned.length) return [];
+            const dual = learned.filter((s) => !!s.secondaryElement?.key);
+            const pickRandom = (arr: number[], n: number): number[] => {
+              const a = arr.slice();
+              for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                const t = a[i];
+                a[i] = a[j];
+                a[j] = t;
+              }
+              return a.slice(0, Math.max(0, Math.min(n, a.length)));
+            };
+            if (dual.length) {
+              const target = dual[0];
+              const p: ElementType = target.primaryElement.key as ElementType;
+              const s: ElementType = target.secondaryElement!
+                .key as ElementType;
+              const pIds = Object.keys(AllCards)
+                .map((x) => Number(x))
+                .filter((id) => AllCards[id].element === p);
+              const sIds = Object.keys(AllCards)
+                .map((x) => Number(x))
+                .filter((id) => AllCards[id].element === s);
+              const firstFour = [
+                ...pickRandom(pIds, 2),
+                ...pickRandom(sIds, 2),
+              ];
+              const allEls = new Set<ElementType>();
+              learned.forEach((sk) => {
+                allEls.add(sk.primaryElement.key as ElementType);
+                if (sk.secondaryElement?.key)
+                  allEls.add(sk.secondaryElement.key as ElementType);
+              });
+              const restPool = Object.keys(AllCards)
+                .map((x) => Number(x))
+                .filter(
+                  (id) =>
+                    allEls.has(AllCards[id].element) && !firstFour.includes(id)
+                );
+              const rest = pickRandom(restPool, 2);
+              return [...firstFour, ...rest];
+            }
+            const elements = new Set<ElementType>();
+            learned.forEach((s) => {
+              elements.add(s.primaryElement.key as ElementType);
+              if (s.secondaryElement?.key)
+                elements.add(s.secondaryElement.key as ElementType);
+            });
+            const pool = Object.keys(AllCards)
+              .map((x) => Number(x))
+              .filter((id) => elements.has(AllCards[id].element));
+            return pickRandom(pool, 6);
+          } catch {
+            return [];
+          }
+        };
+        const order =
+          from === "help"
+            ? (payload?.drawOrderIds || []).map((x) => Number(x))
+            : getStoryDrawOrder();
+        const pcm =
+          this._battleOverlayNode.getComponentInChildren(PlayerCardManager) ||
+          this._battleOverlayNode.getComponent(PlayerCardManager);
+        if (pcm && order && order.length) {
+          try {
+            pcm.setSeedForNextBattle({ drawOrderIds: order });
+          } catch { }
+        }
+      }
+      this._battleOverlayNode.active = true;
+      try {
+        this._battleOverlayNode.setSiblingIndex(
+          this.battleContainer.children.length - 1
+        );
+      } catch { }
+    };
+    resources.load(
+      "prefabs/Battle/Battle",
+      Prefab,
+      (err: any, prefab: Prefab) => {
+        if (err || !prefab) return;
+        showBattle(prefab);
+      }
+    );
+  };
+}

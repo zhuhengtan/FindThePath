@@ -19,6 +19,9 @@ import {
 import { Dialogue } from "./entities/Dialogue";
 import { DialogueNode } from "./entities/DialogueNode";
 import { Actor } from "./entities/Actor";
+import { DialogueUI } from "db://assets/dialogue-system/prefabs/DialogueUI/DialogueUI";
+import { QuestNotificationUI } from "db://assets/dialogue-system/prefabs/QuestNotificationUI/QuestNotificationUI";
+import { AchievementNotificationUI } from "db://assets/dialogue-system/prefabs/AchievementNotificationUI/AchievementNotificationUI";
 
 const { ccclass } = _decorator;
 
@@ -55,6 +58,7 @@ export class DialogueUIManager {
   private _registered: boolean = false;
   private _lastNode: DialogueNode | null = null;
   private _scheduler: Component | null = null;
+  private _schedulerNode: Node | null = null;
   private _autoAdvanceCallback: (() => void) | null = null;
 
   private constructor() { }
@@ -101,16 +105,32 @@ export class DialogueUIManager {
         return;
       }
 
-      // 创建容器节点
-      this._containerNode = new Node("DialogueUIContainer");
       const canvas = getPersistUICanvas();
-      canvas.node.addChild(this._containerNode);
+      this._containerNode = canvas.node;
 
       // 创建一个辅助组件用于 schedule
-      this._scheduler = this._containerNode.addComponent(Component);
+      this._schedulerNode = new Node("DialogueUIScheduler");
+      canvas.node.addChild(this._schedulerNode);
+      this._scheduler = this._schedulerNode.addComponent(Component);
 
       // 注册事件监听
       this.registerEventListeners();
+
+      try {
+        await import("db://assets/dialogue-system/prefabs/DialogueUI/DialogueUI");
+      } catch (e) {
+        console.error("[DialogueUIManager] Failed to preload DialogueUI script:", e);
+      }
+      try {
+        await import("db://assets/dialogue-system/prefabs/QuestNotificationUI/QuestNotificationUI");
+      } catch (e) {
+        console.error("[DialogueUIManager] Failed to preload QuestNotificationUI script:", e);
+      }
+      try {
+        await import("db://assets/dialogue-system/prefabs/AchievementNotificationUI/AchievementNotificationUI");
+      } catch (e) {
+        console.error("[DialogueUIManager] Failed to preload AchievementNotificationUI script:", e);
+      }
 
       this._isInitialized = true;
       console.log("[DialogueUIManager] Initialized successfully");
@@ -206,6 +226,16 @@ export class DialogueUIManager {
     this._lastNode = node;
   }
 
+  private sanitizeNodeTree(n: Node): void {
+    const comps = (n as any)._components;
+    if (Array.isArray(comps)) {
+      (n as any)._components = comps.filter(Boolean);
+    }
+    for (const child of n.children) {
+      this.sanitizeNodeTree(child);
+    }
+  }
+
   private ensureDialogueUI(): void {
     console.log("[DialogueUIManager] ensureDialogueUI called");
     console.log("[DialogueUIManager] _dialogUIInstance:", this._dialogUIInstance);
@@ -215,10 +245,9 @@ export class DialogueUIManager {
     if (!this._dialogUIInstance && this._dialogUIPrefab && this._containerNode) {
       console.log("[DialogueUIManager] Creating new DialogueUI instance");
       const node = instantiate(this._dialogUIPrefab);
+      this.sanitizeNodeTree(node);
       node.setParent(this._containerNode);
-      const comps = (node.getComponents(Component) as any[]).filter(c => c != null);
-      console.log("[DialogueUIManager] Components found:", comps.map(c => c.constructor?.name));
-      this._dialogUIInstance = comps.find((c) => typeof c.renderLineWithActor === "function") || null;
+      this._dialogUIInstance = node.getComponent(DialogueUI);
       console.log("[DialogueUIManager] DialogueUI instance:", this._dialogUIInstance);
       this._dialogUIInstance?.show();
       return;
@@ -381,9 +410,9 @@ export class DialogueUIManager {
     }
 
     const node = instantiate(this._questNotificationPrefab);
+    this.sanitizeNodeTree(node);
     node.setParent(this._containerNode);
-    const ui = node.getComponents(Component).find((c: any) => typeof c.show === "function") as any;
-    ui?.show(quest, status);
+    node.getComponent(QuestNotificationUI)?.show(quest, status);
   }
 
   // ==================== 成就通知 ====================
@@ -395,9 +424,9 @@ export class DialogueUIManager {
     }
 
     const node = instantiate(this._achievementNotificationPrefab);
+    this.sanitizeNodeTree(node);
     node.setParent(this._containerNode);
-    const ui = node.getComponents(Component).find((c: any) => typeof c.show === "function") as any;
-    ui?.show(achievement);
+    node.getComponent(AchievementNotificationUI)?.show(achievement);
   }
 
   // ==================== 公共属性和方法 ====================
@@ -412,10 +441,16 @@ export class DialogueUIManager {
 
   public destroy(): void {
     this.unregisterEventListeners();
-    if (this._containerNode) {
-      this._containerNode.destroy();
-      this._containerNode = null;
+    const uiNode = this._dialogUIInstance?.node as Node | undefined;
+    if (uiNode && uiNode.isValid) {
+      uiNode.destroy();
     }
+    if (this._schedulerNode && this._schedulerNode.isValid) {
+      this._schedulerNode.destroy();
+    }
+    this._schedulerNode = null;
+    this._scheduler = null;
+    this._containerNode = null;
     this._dialogUIPrefab = null;
     this._questNotificationPrefab = null;
     this._achievementNotificationPrefab = null;

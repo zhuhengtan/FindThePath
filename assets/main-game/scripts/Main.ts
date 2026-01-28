@@ -1,6 +1,7 @@
 import { _decorator, Component, director, Node } from "cc";
 import { ConfigLoader } from "db://assets/hunter/utils/config-loader";
 import { StorageManager } from "db://assets/hunter/utils/storage";
+import { getPersistUICanvas } from "db://assets/hunter-ui/ui-utils";
 import {
   initAndLoadDialogSystem,
   initDialogueUIManager,
@@ -10,6 +11,7 @@ import {
 } from "db://assets/dialogue-system/scripts/index";
 import { Quest } from "db://assets/dialogue-system/scripts/entities/Quest";
 import { Achievement } from "db://assets/dialogue-system/scripts/entities/Achievement";
+import { DialogueSystemEventHandler } from "./DialogueSystemEventHandler";
 
 const { ccclass, property } = _decorator;
 
@@ -37,6 +39,8 @@ export class Main extends Component {
     ]);
     console.log("[Main] UI managers initialized");
 
+    this.initDialogueSystemEventHandler();
+
     // 2. 加载配置（等待完成）
     await new Promise<void>((resolve) => {
       ConfigLoader.instance.loadAllConfigs(ENTITY_MAP, () => {
@@ -63,6 +67,14 @@ export class Main extends Component {
     questManager.loadMainQuests();
 
     console.log("[Main] Game initialized");
+  }
+
+  private initDialogueSystemEventHandler(): void {
+    const canvas = getPersistUICanvas();
+    const node = canvas.node;
+    if (!node.getComponent(DialogueSystemEventHandler)) {
+      node.addComponent(DialogueSystemEventHandler);
+    }
   }
 
   update(deltaTime: number) { }

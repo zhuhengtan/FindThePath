@@ -211,8 +211,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 1080,
-      "height": 2400
+      "width": 1280,
+      "height": 720
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -375,7 +375,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": -880,
+      "y": -40,
       "z": 0
     },
     "_lrot": {
@@ -972,8 +972,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 436.0078125,
-      "height": 50.4
+      "width": 435.98718183635395,
+      "height": 50.400000000000006
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -1011,7 +1011,7 @@
     "_string": "NPC名字如果很长会怎么样",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 36,
+    "_actualFontSize": 52.762499999999996,
     "_fontSize": 36,
     "_fontFamily": "Arial",
     "_lineHeight": 40,
@@ -1406,8 +1406,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 102.2265625,
-      "height": 50.4
+      "width": 102.21781716417911,
+      "height": 50.400000000000006
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -1445,7 +1445,7 @@
     "_string": "NPC的身份",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 20,
+    "_actualFontSize": 29.3125,
     "_fontSize": 20,
     "_fontFamily": "Arial",
     "_lineHeight": 40,
@@ -1568,8 +1568,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 700,
-      "height": 135.6
+      "width": 900,
+      "height": 75.6
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -1607,7 +1607,7 @@
     "_string": "这是NPC说的话的内容的位置，如果很长会怎么样",
     "_horizontalAlign": 0,
     "_verticalAlign": 1,
-    "_actualFontSize": 40,
+    "_actualFontSize": 58.625,
     "_fontSize": 40,
     "_fontFamily": "Arial",
     "_lineHeight": 60,
@@ -1713,7 +1713,7 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 780,
+      "width": 980,
       "height": 380
     },
     "_anchorPoint": {
@@ -1873,7 +1873,7 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 760,
+      "width": 960,
       "height": 340
     },
     "_anchorPoint": {
@@ -2162,7 +2162,7 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 920,
+      "width": 1120,
       "height": 480
     },
     "_anchorPoint": {
@@ -2277,8 +2277,8 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 1080,
-      "height": 2400
+      "width": 1280,
+      "height": 720
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -4767,7 +4767,7 @@
     "_isAbsVerticalCenter": true,
     "_originalWidth": 100,
     "_originalHeight": 100,
-    "_alignMode": 2,
+    "_alignMode": 1,
     "_lockFlags": 45,
     "_id": ""
   },
