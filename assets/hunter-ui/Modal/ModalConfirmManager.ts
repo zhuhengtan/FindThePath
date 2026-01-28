@@ -1,11 +1,9 @@
 import {
   _decorator,
-  Component,
   Node,
   instantiate,
   Prefab,
-  Color,
-  director,
+  assetManager,
 } from "cc";
 import {
   ModalConfirm,
@@ -13,60 +11,149 @@ import {
   ModalActionColor,
   ModalActionTopRightIcon,
 } from "./ModalConfirm";
-const { ccclass, property } = _decorator;
+import { PopupManager } from "../Popup/PopupManager";
+
+const { ccclass } = _decorator;
 
 export { ModalActionColor };
 export { ModalActionTopRightIcon };
 
+/**
+ * UI 组件 Bundle 配置
+ */
+const UI_BUNDLE_NAME = "hunter-ui";
+const MODAL_PREFAB_PATH = "Modal/ModalConfirm";
+
+/**
+ * ModalConfirm 单例管理器（纯逻辑类，无需挂载到节点）
+ *
+ * 使用方式：
+ * ```typescript
+ * import { ModalConfirmManager } from 'db://assets/hunter-ui/Modal/ModalConfirmManager';
+ *
+ * // 确认弹窗
+ * ModalConfirmManager.instance.confirm({
+ *   content: '确定删除？',
+ *   onConfirm: () => console.log('确认'),
+ * });
+ *
+ * // 提示弹窗
+ * ModalConfirmManager.instance.alert({
+ *   content: '操作成功',
+ * });
+ * ```
+ */
 @ccclass("ModalConfirmManager")
-export class ModalConfirmManager extends Component {
+export class ModalConfirmManager {
   private static _instance: ModalConfirmManager | null = null;
+  private _modalPrefab: Prefab | null = null;
+  private _isInitialized: boolean = false;
+  private _initPromise: Promise<void> | null = null;
 
-  @property(Prefab)
-  modalPrefab: Prefab | null = null;
+  private constructor() { }
 
-  @property(Node)
-  modalContainer: Node | null = null;
+  public static get instance(): ModalConfirmManager {
+    if (!ModalConfirmManager._instance) {
+      ModalConfirmManager._instance = new ModalConfirmManager();
+    }
+    return ModalConfirmManager._instance;
+  }
 
-  onLoad() {
-    if (ModalConfirmManager._instance) {
-      this.node.destroy();
+  /**
+   * 初始化 ModalConfirmManager
+   * 加载 ModalConfirm prefab
+   */
+  public async init(): Promise<void> {
+    if (this._isInitialized) {
       return;
     }
 
-    ModalConfirmManager._instance = this;
-    director.getScene()
+    if (this._initPromise) {
+      return this._initPromise;
+    }
+
+    this._initPromise = this._doInit();
+    return this._initPromise;
   }
 
-  public static get instance(): ModalConfirmManager | null {
-    return ModalConfirmManager._instance;
-  }
-  public static getInstance(): ModalConfirmManager | null {
-    return ModalConfirmManager._instance;
+  private async _doInit(): Promise<void> {
+    try {
+      this._modalPrefab = await this.loadPrefab(UI_BUNDLE_NAME, MODAL_PREFAB_PATH);
+      if (!this._modalPrefab) {
+        console.error("[ModalConfirmManager] Failed to load ModalConfirm prefab");
+        return;
+      }
+
+      this._isInitialized = true;
+      console.log("[ModalConfirmManager] Initialized successfully");
+    } catch (error) {
+      console.error("[ModalConfirmManager] Init failed:", error);
+      this._initPromise = null;
+    }
   }
 
-  public showActions(options: {
+  private loadPrefab(bundleName: string, prefabPath: string): Promise<Prefab | null> {
+    return new Promise((resolve) => {
+      let bundle = assetManager.getBundle(bundleName);
+
+      const loadFromBundle = (b: ReturnType<typeof assetManager.getBundle>) => {
+        b!.load(prefabPath, Prefab, (err, prefab) => {
+          if (err || !prefab) {
+            console.error(`[ModalConfirmManager] Failed to load prefab: ${prefabPath}`, err);
+            resolve(null);
+            return;
+          }
+          resolve(prefab);
+        });
+      };
+
+      if (!bundle) {
+        assetManager.loadBundle(bundleName, (err, loadedBundle) => {
+          if (err || !loadedBundle) {
+            console.error(`[ModalConfirmManager] Failed to load bundle: ${bundleName}`, err);
+            resolve(null);
+            return;
+          }
+          loadFromBundle(loadedBundle);
+        });
+      } else {
+        loadFromBundle(bundle);
+      }
+    });
+  }
+
+  /**
+   * 是否已初始化
+   */
+  public get isInitialized(): boolean {
+    return this._isInitialized;
+  }
+
+  public async showActions(options: {
     title?: string;
     content?: string;
     customContent?: Node;
     actions: ModalAction[];
     count?: { min: number; max: number; initial?: number } | null;
     maskOpacity?: number;
-    maskColor?: Color;
+    maskClosable?: boolean;
     beforeShow?: () => void;
     afterShow?: (e: ModalConfirm) => void;
     beforeClose?: () => void;
     afterClose?: () => void;
-  }) {
-    if (!this.modalPrefab || !this.modalContainer) {
-      return;
+  }): Promise<ModalConfirm | null> {
+    await this.init();
+
+    if (!this._modalPrefab) {
+      console.warn("[ModalConfirmManager] Not initialized");
+      return null;
     }
 
-    const modalNode = instantiate(this.modalPrefab);
+    const modalNode = instantiate(this._modalPrefab);
     const modalComponent = modalNode.getComponent(ModalConfirm);
 
     if (!modalComponent) {
-      return;
+      return null;
     }
 
     if (options.title) {
@@ -81,7 +168,6 @@ export class ModalConfirmManager extends Component {
 
     modalComponent.setActions(options.actions || []);
 
-    // 设置数量选择滑块
     if (options.count) {
       modalComponent.setSliderRange(
         options.count.min,
@@ -90,16 +176,6 @@ export class ModalConfirmManager extends Component {
       );
     } else {
       modalComponent.hideSlider();
-    }
-
-    // 设置遮罩透明度
-    if (options.maskOpacity !== undefined) {
-      modalComponent.setMaskOpacity(options.maskOpacity);
-    }
-
-    // 设置遮罩颜色
-    if (options.maskColor) {
-      modalComponent.setMaskColor(options.maskColor);
     }
 
     if (options.beforeShow) {
@@ -118,14 +194,21 @@ export class ModalConfirmManager extends Component {
       modalComponent.setAfterCloseCallback(options.afterClose);
     }
 
-    this.modalContainer.addChild(modalNode);
+    // 使用 PopupManager 显示
+    modalComponent.maskClosable = options.maskClosable ?? true;
+    PopupManager.show(modalNode, true, {
+      maskClosable: options.maskClosable ?? true,
+      maskOpacity: options.maskOpacity ?? 180,
+      onMaskClick: () => modalComponent.close(),
+      onClose: options.afterClose,
+    });
 
     modalComponent.show();
 
     return modalComponent;
   }
 
-  public showModal(options: {
+  public async showModal(options: {
     title?: string;
     content?: string;
     customContent?: Node;
@@ -136,21 +219,24 @@ export class ModalConfirmManager extends Component {
     showCancel?: boolean;
     count?: { min: number; max: number; initial?: number } | null;
     maskOpacity?: number;
-    maskColor?: Color;
+    maskClosable?: boolean;
     beforeShow?: () => void;
     afterShow?: (e: ModalConfirm) => void;
     beforeClose?: () => void;
     afterClose?: () => void;
-  }) {
-    if (!this.modalPrefab || !this.modalContainer) {
-      return;
+  }): Promise<ModalConfirm | null> {
+    await this.init();
+
+    if (!this._modalPrefab) {
+      console.warn("[ModalConfirmManager] Not initialized");
+      return null;
     }
 
-    const modalNode = instantiate(this.modalPrefab);
+    const modalNode = instantiate(this._modalPrefab);
     const modalComponent = modalNode.getComponent(ModalConfirm);
 
     if (!modalComponent) {
-      return;
+      return null;
     }
 
     if (options.title) {
@@ -171,7 +257,6 @@ export class ModalConfirmManager extends Component {
       modalComponent.setCancelText(options.cancelText);
     }
 
-    // 设置数量选择滑块
     if (options.count) {
       modalComponent.setSliderRange(
         options.count.min,
@@ -208,30 +293,27 @@ export class ModalConfirmManager extends Component {
       modalComponent.setAfterCloseCallback(options.afterClose);
     }
 
-    // 设置遮罩透明度
-    if (options.maskOpacity !== undefined) {
-      modalComponent.setMaskOpacity(options.maskOpacity);
-    }
-
-    // 设置遮罩颜色
-    if (options.maskColor) {
-      modalComponent.setMaskColor(options.maskColor);
-    }
-
     modalComponent.showYesNoLayout(options.showCancel !== false);
     if (modalComponent.cancelButton) {
       modalComponent.cancelButton.node.active = options.showCancel !== false;
     }
     modalComponent.adjustButtonsLayout(options.showCancel !== false);
 
-    this.modalContainer.addChild(modalNode);
+    // 使用 PopupManager 显示
+    modalComponent.maskClosable = options.maskClosable ?? true;
+    PopupManager.show(modalNode, true, {
+      maskClosable: options.maskClosable ?? true,
+      maskOpacity: options.maskOpacity ?? 180,
+      onMaskClick: () => modalComponent.close(),
+      onClose: options.afterClose,
+    });
 
     modalComponent.show();
 
     return modalComponent;
   }
 
-  public confirm(options: {
+  public async confirm(options: {
     content: string;
     title?: string;
     confirmText?: string;
@@ -242,8 +324,8 @@ export class ModalConfirmManager extends Component {
     afterShow?: (e: ModalConfirm) => void;
     beforeClose?: () => void;
     afterClose?: () => void;
-  }): void {
-    this.showModal({
+  }): Promise<void> {
+    await this.showModal({
       title: options.title || "提示",
       content: options.content,
       confirmText: options.confirmText || "确认",
@@ -258,7 +340,7 @@ export class ModalConfirmManager extends Component {
     });
   }
 
-  public alert(options: {
+  public async alert(options: {
     content: string;
     title?: string;
     confirmText?: string;
@@ -267,8 +349,8 @@ export class ModalConfirmManager extends Component {
     afterShow?: () => void;
     beforeClose?: () => void;
     afterClose?: () => void;
-  }): void {
-    this.showModal({
+  }): Promise<void> {
+    await this.showModal({
       title: options.title || "提示",
       content: options.content,
       confirmText: options.confirmText || "确认",
@@ -280,4 +362,49 @@ export class ModalConfirmManager extends Component {
       afterClose: options.afterClose,
     });
   }
+
+  /**
+   * 销毁 ModalConfirmManager
+   */
+  public destroy(): void {
+    this._modalPrefab = null;
+    this._isInitialized = false;
+    this._initPromise = null;
+    ModalConfirmManager._instance = null;
+  }
+}
+
+// ========== 便捷导出方法 ==========
+
+/**
+ * 显示确认弹窗
+ */
+export async function showConfirm(options: {
+  content: string;
+  title?: string;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm?: () => void;
+  onCancel?: () => void;
+}): Promise<void> {
+  return ModalConfirmManager.instance.confirm(options);
+}
+
+/**
+ * 显示提示弹窗
+ */
+export async function showAlert(options: {
+  content: string;
+  title?: string;
+  confirmText?: string;
+  onConfirm?: () => void;
+}): Promise<void> {
+  return ModalConfirmManager.instance.alert(options);
+}
+
+/**
+ * 初始化 ModalConfirmManager（可选，调用 confirm/alert 会自动初始化）
+ */
+export async function initModalConfirmManager(): Promise<void> {
+  return ModalConfirmManager.instance.init();
 }
