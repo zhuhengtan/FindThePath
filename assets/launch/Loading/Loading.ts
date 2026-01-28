@@ -4,21 +4,23 @@ import {
   director,
   Director,
   Node,
-  Canvas,
   CCInteger,
   tween,
   Vec3,
+  Sprite,
+  UITransform,
+  view,
 } from "cc";
 
 const { ccclass, property } = _decorator;
 
 @ccclass("Loading")
 export class Loading extends Component {
+  @property(Node)
+  loadingBgNode: Node;
+
   @property([Node])
   dots: Node[] = [];
-
-  @property(Canvas)
-  loadingCanvas: Canvas;
 
   @property(CCInteger)
   minLoadTime: number = 500;
@@ -32,6 +34,7 @@ export class Loading extends Component {
   private _loadingTime: number = 0;
   private _isAnimating: boolean = false;
   private _originalPositions: Map<number, Vec3> = new Map(); // 存储每个点的初始位置
+  private _showBg: boolean = true;
 
   onLoad() {
     director.on(
@@ -42,25 +45,15 @@ export class Loading extends Component {
     director.on(Director.EVENT_AFTER_SCENE_LAUNCH, this.afterSceneLaunch, this);
 
     // 初始时隐藏加载界面
-    if (this.loadingCanvas) {
-      this.loadingCanvas.node.active = false;
-    }
+    this.node.active = false;
   }
 
   beforeSceneLoading(e) {
-    if (!this.loadingCanvas) return;
-    // 先重置所有点的状态
-    this.resetDotsState();
-
-    this.loadingCanvas.node.active = true;
-    this._loadingTime = new Date().valueOf();
-
-    // 重置并按顺序播放点的动画
-    this.playDotsAnimation();
+    // 场景切换时必须显示背景
+    this.showLoading(true);
   }
 
   afterSceneLaunch(e) {
-    if (!this.loadingCanvas) return;
     const current = new Date().valueOf();
     const elapsedTime = current - this._loadingTime;
 
@@ -68,15 +61,83 @@ export class Loading extends Component {
       // 还需要等待的时间
       const remainingTime = this.minLoadTime - elapsedTime;
       setTimeout(() => {
-        this._loadingTime = 0;
-        this.stopDotsAnimation();
-        this.loadingCanvas.node.active = false;
+        this.hideLoading();
       }, remainingTime);
     } else {
-      this._loadingTime = 0;
-      this.stopDotsAnimation();
-      this.loadingCanvas.node.active = false;
+      this.hideLoading();
     }
+  }
+
+  /**
+   * 显示加载界面
+   * @param showBg 是否显示背景图，true 显示，false 隐藏
+   */
+  public showLoading(showBg: boolean = true) {
+    this._showBg = showBg;
+    this._loadingTime = new Date().valueOf();
+
+    // 先重置所有点的状态
+    this.resetDotsState();
+
+    // 控制背景 Sprite 组件
+    if (this.loadingBgNode) {
+      const sprite = this.loadingBgNode.getComponent(Sprite);
+      if (sprite) {
+        sprite.enabled = showBg;
+
+        // 如果显示背景，根据图片尺寸调整大小以铺满屏幕
+        if (showBg && sprite.spriteFrame) {
+          this.adjustBgToFillScreen();
+        }
+      }
+    }
+
+    this.node.active = true;
+
+    // 播放点的动画
+    this.playDotsAnimation();
+  }
+
+  /**
+   * 隐藏加载界面
+   */
+  public hideLoading() {
+    this._loadingTime = 0;
+    this.stopDotsAnimation();
+    this.node.active = false;
+  }
+
+  /**
+   * 调整背景大小以铺满屏幕
+   * 使用 cover 模式（保持宽高比，完全覆盖屏幕）
+   */
+  private adjustBgToFillScreen() {
+    if (!this.loadingBgNode) return;
+
+    const sprite = this.loadingBgNode.getComponent(Sprite);
+    const uiTransform = this.loadingBgNode.getComponent(UITransform);
+
+    if (!sprite || !sprite.spriteFrame || !uiTransform) return;
+
+    // 获取图片原始尺寸
+    const originalSize = sprite.spriteFrame.originalSize;
+    const imgWidth = originalSize.width;
+    const imgHeight = originalSize.height;
+
+    if (imgWidth <= 0 || imgHeight <= 0) return;
+
+    // 获取屏幕尺寸
+    const visibleSize = view.getVisibleSize();
+    const screenWidth = visibleSize.width;
+    const screenHeight = visibleSize.height;
+
+    // 计算 cover 模式的缩放比例（取较大值以覆盖屏幕）
+    const scaleX = screenWidth / imgWidth;
+    const scaleY = screenHeight / imgHeight;
+    const scale = Math.max(scaleX, scaleY);
+
+    // 设置 UITransform 的 contentSize
+    uiTransform.setContentSize(imgWidth * scale, imgHeight * scale);
   }
 
   /**
@@ -95,7 +156,7 @@ export class Loading extends Component {
 
     // 创建波浪动画循环
     const playWaveCycle = () => {
-      if (!this._isAnimating || !this.loadingCanvas || !this.loadingCanvas.node.active) {
+      if (!this._isAnimating || !this.node.active) {
         return;
       }
 
@@ -112,7 +173,7 @@ export class Loading extends Component {
 
         // 延迟后播放缩放和跳动动画
         setTimeout(() => {
-          if (!this._isAnimating || !this.loadingCanvas || !this.loadingCanvas.node.active) {
+          if (!this._isAnimating || !this.node.active) {
             return;
           }
 

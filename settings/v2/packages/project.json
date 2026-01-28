@@ -1,4 +1,34 @@
 {
   "__version__": "1.0.6",
-  "custom_joint_texture_layouts": []
+  "custom_joint_texture_layouts": [],
+  "sorting-layer": {
+    "layers": [
+      {
+        "id": 0,
+        "name": "default",
+        "value": 0
+      },
+      {
+        "id": 1,
+        "name": "GameUI",
+        "value": 1
+      },
+      {
+        "id": 2,
+        "name": "Popup",
+        "value": 2
+      },
+      {
+        "id": 3,
+        "name": "Toast",
+        "value": 3
+      },
+      {
+        "id": 4,
+        "name": "Loading",
+        "value": 4
+      }
+    ],
+    "increaseId": 5
+  }
 }

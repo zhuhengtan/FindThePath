@@ -1,9 +1,9 @@
-import { _decorator, Component, Node, ProgressBar, director, assetManager, Label, Prefab, instantiate } from 'cc';
+import { _decorator, Component, ProgressBar, director, assetManager, Label } from 'cc';
 const { ccclass, property } = _decorator;
 
 /**
  * 启动场景加载器
- * 负责加载核心分包并显示加载进度，加载完成后自动进入 global 场景
+ * 负责加载核心分包并显示加载进度，加载完成后自动进入 main 场景
  */
 @ccclass('Launch')
 export class Launch extends Component {
@@ -17,10 +17,9 @@ export class Launch extends Component {
   tipLabel: Label = null;
 
   // 启动时需要加载的分包列表
-  private _bundlesToLoad: string[] = ['base', 'resources', 'play'];
+  private _bundlesToLoad: string[] = ['hunter-ui'];
   private _loadedCount: number = 0;
   private _totalBundles: number = 0;
-  private _sceneLoadingReady: boolean = false;
 
   start() {
     this._totalBundles = this._bundlesToLoad.length;
@@ -44,8 +43,7 @@ export class Launch extends Component {
         this._loadedCount++;
       }
 
-      await this.ensureSceneLoading();
-      await this.preloadScene('global');
+      await this.preloadScene('main');
 
       // 所有分包加载完成
       this.updateProgress(1, '加载完成！');
@@ -83,41 +81,6 @@ export class Launch extends Component {
     });
   }
 
-  private ensureSceneLoading(): Promise<void> {
-    return new Promise((resolve) => {
-      if (this._sceneLoadingReady) {
-        resolve();
-        return;
-      }
-
-      const existing = director.getScene()?.getChildByName('SCENE_LOADING');
-      if (existing) {
-        this._sceneLoadingReady = true;
-        resolve();
-        return;
-      }
-
-      const baseBundle = assetManager.getBundle('base');
-      if (!baseBundle) {
-        resolve();
-        return;
-      }
-
-      baseBundle.load('prefabs/UI/SceneLoading', Prefab, (err, prefab) => {
-        if (err || !prefab) {
-          resolve();
-          return;
-        }
-
-        const node = instantiate(prefab);
-        node.name = 'SCENE_LOADING';
-        director.addPersistRootNode(node);
-        this._sceneLoadingReady = true;
-        resolve();
-      });
-    });
-  }
-
   private preloadScene(sceneName: string): Promise<void> {
     return new Promise((resolve) => {
       director.preloadScene(sceneName, undefined, () => {
@@ -147,12 +110,13 @@ export class Launch extends Component {
    * 进入游戏
    */
   enterGame() {
-    console.log('进入 global 场景');
-    director.loadScene('global', (err) => {
+    console.log('进入 main 场景');
+    director.loadScene('main', (err) => {
       if (err) {
-        console.error('加载 global 场景失败:', err);
+        console.error('加载 main 场景失败:', err);
         this.updateProgress(1, '场景加载失败');
       }
     });
   }
 }
+
