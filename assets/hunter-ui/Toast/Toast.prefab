@@ -269,7 +269,7 @@
     },
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 246.7578125,
+      "width": 246.73913043478262,
       "height": 50.4
     },
     "_anchorPoint": {
@@ -308,7 +308,7 @@
     "_string": "This is a toast",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 40,
+    "_actualFontSize": 66.125,
     "_fontSize": 40,
     "_fontFamily": "Arial",
     "_lineHeight": 40,
