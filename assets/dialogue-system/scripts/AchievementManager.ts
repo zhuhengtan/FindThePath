@@ -116,11 +116,11 @@ export class AchievementManager {
     EventBus.on(QuestEvents.LevelCompleted, onLevelCompleted);
 
     // 对话完成
-    const onDialogCompleted = (dialogId: string | number) => {
-      this.onDialogCompleted(dialogId);
+    const onDialogueCompleted = (dialogId: string | number) => {
+      this.onDialogueCompleted(dialogId);
     };
-    this._eventHandlers.set(QuestEvents.DialogCompleted, onDialogCompleted);
-    EventBus.on(QuestEvents.DialogCompleted, onDialogCompleted);
+    this._eventHandlers.set(QuestEvents.DialogueCompleted, onDialogueCompleted);
+    EventBus.on(QuestEvents.DialogueCompleted, onDialogueCompleted);
 
     // 技能使用
     const onSkillUsed = (skillId: string | number, count: number = 1) => {
@@ -258,9 +258,9 @@ export class AchievementManager {
     this.updateProgressByType(QuestObjectiveType.CompleteLevel, levelId, 1);
   }
 
-  private onDialogCompleted(dialogId: string | number): void {
-    this.updateProgressByType(QuestObjectiveType.CompleteDialog, dialogId, 1);
-    this.updateProgressByType(QuestObjectiveType.CompleteSpecificDialog, dialogId, 1);
+  private onDialogueCompleted(dialogId: string | number): void {
+    this.updateProgressByType(QuestObjectiveType.CompleteDialogue, dialogId, 1);
+    this.updateProgressByType(QuestObjectiveType.CompleteSpecificDialogue, dialogId, 1);
     this.updateProgressByType(QuestObjectiveType.TalkToNpc, dialogId, 1);
   }
 

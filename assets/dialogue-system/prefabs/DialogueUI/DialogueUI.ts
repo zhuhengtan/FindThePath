@@ -13,8 +13,8 @@ import {
   Layout,
   assetManager,
 } from "cc";
-import { Dialog } from "../../scripts/entities/Dialog";
-import { DialogNode } from "../../scripts/entities/DialogNode";
+import { Dialogue } from "../../scripts/entities/Dialogue";
+import { DialogueNode } from "../../scripts/entities/DialogueNode";
 
 import { ChoiceButton } from "./ChoiceButton";
 import { Actor } from "../../scripts/entities/Actor";
@@ -22,14 +22,14 @@ import { ConfigLoader } from "db://assets/hunter/utils/config-loader";
 import {
   AnimationType,
   ButtonClickType,
-  DialogChoice,
-  DialogEvents,
+  DialogueChoice,
+  DialogueEvents,
 } from "../../type";
 import EventBus from "db://assets/hunter/utils/event-bus";
 const { ccclass, property } = _decorator;
 
-@ccclass("DialogUI")
-export class DialogUI extends Component {
+@ccclass("DialogueUI")
+export class DialogueUI extends Component {
   @property({ type: Node })
   public skipButton: Node = null;
 
@@ -99,8 +99,8 @@ export class DialogUI extends Component {
   @property
   public typewriterSpeed: number = 0.05; // seconds per character
 
-  private _currentDialog: Dialog | null = null;
-  private _currentNode: DialogNode | null = null;
+  private _currentDialog: Dialogue | null = null;
+  private _currentNode: DialogueNode | null = null;
   private _isTyping: boolean = false;
   private _portraitCache: Map<string, SpriteFrame> = new Map();
   private _currentPortraitKey: string = "";
@@ -220,7 +220,7 @@ export class DialogUI extends Component {
 
   public renderChoices(
     prompt: string,
-    choices: DialogChoice[],
+    choices: DialogueChoice[],
     layout: "horizontal" | "vertical" = "vertical"
   ): void {
     this.showTalkPanel();
@@ -314,7 +314,7 @@ export class DialogUI extends Component {
     this.startTypewriter(label, text);
   }
 
-  private showChoices(choices: DialogChoice[]): void {
+  private showChoices(choices: DialogueChoice[]): void {
     if (!this.choicesContainer || !this.choiceButtonPrefab) return;
 
     // Clear existing choices
@@ -365,7 +365,7 @@ export class DialogUI extends Component {
     );
 
     if (hasChoices) return;
-    EventBus.emit(DialogEvents.DialogNextRequested);
+    EventBus.emit(DialogueEvents.DialogueNextRequested);
   }
 
   public onSkipClicked(): void {
@@ -375,7 +375,7 @@ export class DialogUI extends Component {
       (this._currentNode.choices.choices || []).length
     );
     if (hasChoices) return;
-    EventBus.emit(DialogEvents.DialogSkipRequested);
+    EventBus.emit(DialogueEvents.DialogueSkipRequested);
   }
 
   public updateActor(
@@ -612,7 +612,7 @@ export class DialogUI extends Component {
   public renderSystemChoices(
     effect: "black" | "transparent",
     prompt: string,
-    choices: DialogChoice[],
+    choices: DialogueChoice[],
     layout: "horizontal" | "vertical" = "vertical"
   ): void {
     this.stopTypewriter();
@@ -703,37 +703,37 @@ export class DialogUI extends Component {
     if (container) container.active = false;
   }
 
-  private onChoiceClicked(c: DialogChoice): void {
+  private onChoiceClicked(c: DialogueChoice): void {
     if (!c) return;
     switch (c.type) {
       case ButtonClickType.Default:
-        EventBus.emit(DialogEvents.DialogNextRequested);
+        EventBus.emit(DialogueEvents.DialogueNextRequested);
         break;
       case ButtonClickType.Node:
         if (c.data?.node != null) {
           // 节点 ID 可以是字符串或数字，直接传递
-          EventBus.emit(DialogEvents.DialogJumpToNodeRequested, c.data.node)
+          EventBus.emit(DialogueEvents.DialogueJumpToNodeRequested, c.data.node)
         }
         break;
       case ButtonClickType.Scene:
         if (c.data?.scene) {
-          EventBus.emit(DialogEvents.NeedLoadScene, c.data.scene);
+          EventBus.emit(DialogueEvents.NeedLoadScene, c.data.scene);
         }
         break;
       case ButtonClickType.Toast:
         if (c.data?.toast) {
-          EventBus.emit(DialogEvents.NeedShowToast, c.data.toast);
+          EventBus.emit(DialogueEvents.NeedShowToast, c.data.toast);
         }
         break;
       case ButtonClickType.Image:
         // reserved for future system image preview
         break;
       default:
-        EventBus.emit(DialogEvents.DialogNextRequested);
+        EventBus.emit(DialogueEvents.DialogueNextRequested);
     }
   }
 
-  public setCurrentNode(node: DialogNode | null): void {
+  public setCurrentNode(node: DialogueNode | null): void {
     this._currentNode = node || null;
     const hasChoices = !!(
       node?.choices &&
@@ -752,7 +752,7 @@ export class DialogUI extends Component {
       (this._currentNode.choices.choices || []).length
     );
 
-    if (!hasChoices) EventBus.emit(DialogEvents.DialogNextRequested);
+    if (!hasChoices) EventBus.emit(DialogueEvents.DialogueNextRequested);
   }
 
   private setSprite(
@@ -801,4 +801,4 @@ export class DialogUI extends Component {
   }
 }
 
-export default DialogUI;
+export default DialogueUI;

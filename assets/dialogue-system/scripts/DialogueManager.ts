@@ -1,42 +1,42 @@
 import EventBus from "db://assets/hunter/utils/event-bus";
-import { DialogEvents, DialogNodeType, QuestEvents } from "../type";
-import { Dialog } from "./entities/Dialog";
-import { DialogNode } from "./entities/DialogNode";
+import { DialogueEvents, DialogueNodeType, QuestEvents } from "../type";
+import { Dialogue } from "./entities/Dialogue";
+import { DialogueNode } from "./entities/DialogueNode";
 import { QuestManager } from "./QuestManager";
 
 import { AchievementManager } from "./AchievementManager";
 import { ConfigLoader } from "db://assets/hunter/utils/config-loader";
 
-export class DialogManager {
-  private static _instance: DialogManager;
-  private _currentDialog?: Dialog;
-  private _currentNode?: DialogNode;
+export class DialogueManager {
+  private static _instance: DialogueManager;
+  private _currentDialog?: Dialogue;
+  private _currentNode?: DialogueNode;
   private _dialogCompletedEmitted: boolean = false;
   private _waitingForBattle: boolean = false;
-  static get instance(): DialogManager {
-    if (!this._instance) this._instance = new DialogManager();
+  static get instance(): DialogueManager {
+    if (!this._instance) this._instance = new DialogueManager();
     return this._instance;
   }
   constructor() {
-    EventBus.on(DialogEvents.DialogNextRequested, () => {
+    EventBus.on(DialogueEvents.DialogueNextRequested, () => {
       this.next();
     });
-    EventBus.on(DialogEvents.DialogSkipRequested, () => {
+    EventBus.on(DialogueEvents.DialogueSkipRequested, () => {
       this.skip();
     });
-    EventBus.on(DialogEvents.DialogJumpToNodeRequested, (nodeId: number | string) => {
+    EventBus.on(DialogueEvents.DialogueJumpToNodeRequested, (nodeId: number | string) => {
       this.jumpToNodeById(nodeId);
     });
   }
   start(dialogId: number | string): void {
     const dialog = ConfigLoader.instance.getConfigByTableNameAndKey(
-      "dialog",
+      "dialogue",
       dialogId
-    ) as Dialog;
+    ) as Dialogue;
     if (!dialog) return;
     this._currentDialog = dialog;
     this._dialogCompletedEmitted = false;
-    EventBus.emit(DialogEvents.DialogStart, dialog);
+    EventBus.emit(DialogueEvents.DialogueStart, dialog);
     this.gotoNode(dialog.entryNode);
   }
   startAtNodeWithoutEffects(
@@ -44,19 +44,19 @@ export class DialogManager {
     nodeId?: number | string
   ): void {
     const dialog = ConfigLoader.instance.getConfigByTableNameAndKey(
-      "dialog",
+      "dialogue",
       dialogId
-    ) as Dialog;
+    ) as Dialogue;
     if (!dialog) return;
     this._currentDialog = dialog;
     this._dialogCompletedEmitted = false;
-    EventBus.emit(DialogEvents.DialogStart, dialog);
+    EventBus.emit(DialogueEvents.DialogueStart, dialog);
     if (nodeId && nodeId !== 0) {
       this.jumpToNodeByIdWithoutEffects(nodeId);
     } else {
       this._currentNode = dialog.entryNode;
       EventBus.emit(
-        DialogEvents.DialogNodeEnter,
+        DialogueEvents.DialogueNodeEnter,
         this._currentDialog,
         this._currentNode
       );
@@ -68,49 +68,49 @@ export class DialogManager {
     if (!node.choices || !node.choices.choices.length) return;
     // const c = node.choices.choices.find((x) => x.key === choiceKey);
     // if (!c) return;
-    // console.log(`[DialogManager] choose key=${choiceKey} next=${c.nextNodeId}`);
-    // EventBus.emit(Events.DialogChoiceSelected, this._currentDialog, node, c);
+    // console.log(`[DialogueManager] choose key=${choiceKey} next=${c.nextNodeId}`);
+    // EventBus.emit(Events.DialogueChoiceSelected, this._currentDialog, node, c);
     // this.gotoNode(c.nextNodeId);
   }
-  gotoNode(node: DialogNode): void {
+  gotoNode(node: DialogueNode): void {
     this._currentNode = node;
     EventBus.emit(
-      DialogEvents.DialogNodeEnter,
+      DialogueEvents.DialogueNodeEnter,
       this._currentDialog,
       this._currentNode
     );
     switch (this._currentNode.type) {
-      case DialogNodeType.SystemBlack:
-      case DialogNodeType.SystemTransparent:
-      case DialogNodeType.Talk:
+      case DialogueNodeType.SystemBlack:
+      case DialogueNodeType.SystemTransparent:
+      case DialogueNodeType.Talk:
         return;
-      case DialogNodeType.GrantQuest:
-      case DialogNodeType.GrantAchievement:
-      case DialogNodeType.GrantItems:
-      case DialogNodeType.Record:
-      case DialogNodeType.SoundEffect:
-      case DialogNodeType.ShowToast:
-      case DialogNodeType.CompleteQuest:
+      case DialogueNodeType.GrantQuest:
+      case DialogueNodeType.GrantAchievement:
+      case DialogueNodeType.GrantItems:
+      case DialogueNodeType.Record:
+      case DialogueNodeType.SoundEffect:
+      case DialogueNodeType.ShowToast:
+      case DialogueNodeType.CompleteQuest:
         this.executeNodeEffects(this._currentNode);
         this.advanceNext();
         return;
-      case DialogNodeType.LoadScene:
+      case DialogueNodeType.LoadScene:
         this.executeNodeEffects(this._currentNode);
-        this.emitDialogCompletedIfNeeded();
-        EventBus.emit(DialogEvents.DialogEnd, this._currentDialog);
+        this.emitDialogueCompletedIfNeeded();
+        EventBus.emit(DialogueEvents.DialogueEnd, this._currentDialog);
         this._currentDialog = undefined;
         this._currentNode = undefined;
         return;
-      case DialogNodeType.LoadBattle:
+      case DialogueNodeType.LoadBattle:
         this.executeNodeEffects(this._currentNode);
         return;
-      case DialogNodeType.HideAll:
-        this.emitDialogCompletedIfNeeded();
-        EventBus.emit(DialogEvents.DialogEnd, this._currentDialog);
+      case DialogueNodeType.HideAll:
+        this.emitDialogueCompletedIfNeeded();
+        EventBus.emit(DialogueEvents.DialogueEnd, this._currentDialog);
         return;
-      case DialogNodeType.End:
-        this.emitDialogCompletedIfNeeded();
-        EventBus.emit(DialogEvents.DialogEnd, this._currentDialog);
+      case DialogueNodeType.End:
+        this.emitDialogueCompletedIfNeeded();
+        EventBus.emit(DialogueEvents.DialogueEnd, this._currentDialog);
         this._currentDialog = undefined;
         this._currentNode = undefined;
         return;
@@ -121,9 +121,9 @@ export class DialogManager {
   jumpToNodeByIdWithoutEffects(nodeId: number | string): void {
     if (!this._currentDialog) return;
     const node = ConfigLoader.instance.getConfigByTableNameAndKey(
-      "dialog_node",
+      "dialogue_node",
       nodeId
-    ) as DialogNode;
+    ) as DialogueNode;
     if (!node) {
       return;
     }
@@ -131,7 +131,7 @@ export class DialogManager {
     // 跳转到指定节点时强制禁止自动前进（除非节点显式设置 autoDuration）
     this._currentNode.nextType = "manual" as any;
     EventBus.emit(
-      DialogEvents.DialogNodeEnter,
+      DialogueEvents.DialogueNodeEnter,
       this._currentDialog,
       this._currentNode
     );
@@ -145,25 +145,25 @@ export class DialogManager {
   jumpToNodeById(nodeId: number | string): void {
     if (!this._currentDialog) return;
     const node = ConfigLoader.instance.getConfigByTableNameAndKey(
-      "dialog_node",
+      "dialogue_node",
       nodeId
-    ) as DialogNode;
+    ) as DialogueNode;
     if (!node) {
       return;
     }
     // 需要执行副作用的后台类型节点列表
     const effectNodeTypes = [
-      DialogNodeType.LoadBattle,
-      DialogNodeType.LoadScene,
-      DialogNodeType.GrantItems,
-      DialogNodeType.GrantQuest,
-      DialogNodeType.GrantAchievement,
-      DialogNodeType.Record,
-      DialogNodeType.CompleteQuest,
-      DialogNodeType.SoundEffect,
-      DialogNodeType.ShowToast,
-      DialogNodeType.HideAll,
-      DialogNodeType.End,
+      DialogueNodeType.LoadBattle,
+      DialogueNodeType.LoadScene,
+      DialogueNodeType.GrantItems,
+      DialogueNodeType.GrantQuest,
+      DialogueNodeType.GrantAchievement,
+      DialogueNodeType.Record,
+      DialogueNodeType.CompleteQuest,
+      DialogueNodeType.SoundEffect,
+      DialogueNodeType.ShowToast,
+      DialogueNodeType.HideAll,
+      DialogueNodeType.End,
     ];
     if (effectNodeTypes.includes(node.type)) {
       // 使用 gotoNode 执行节点效果
@@ -173,10 +173,10 @@ export class DialogManager {
       this.jumpToNodeByIdWithoutEffects(nodeId);
     }
   }
-  private findNodeInCurrentDialogById(id: string): DialogNode | undefined {
+  private findNodeInCurrentDialogById(id: string): DialogueNode | undefined {
     if (!this._currentDialog) return undefined;
     const visited = new Set<string>();
-    let cursor: DialogNode | undefined = this._currentDialog.entryNode;
+    let cursor: DialogueNode | undefined = this._currentDialog.entryNode;
     let guard = 0;
     while (cursor && guard++ < 200) {
       if (visited.has(cursor.id)) break;
@@ -191,44 +191,44 @@ export class DialogManager {
     savedNodeId: string
   ): void {
     const dialog = ConfigLoader.instance.getConfigByTableNameAndKey(
-      "dialog",
+      "dialogue",
       dialogId
-    ) as Dialog;
+    ) as Dialogue;
     if (!dialog) return;
     this._currentDialog = dialog;
     this._dialogCompletedEmitted = false;
-    EventBus.emit(DialogEvents.DialogStart, dialog);
+    EventBus.emit(DialogueEvents.DialogueStart, dialog);
     const node = this.findNodeInCurrentDialogById(savedNodeId);
     let targetId = node?.nextNode?.id;
     if (!targetId) {
       const saved = ConfigLoader.instance.getConfigByTableNameAndKey(
-        "dialog_node",
+        "dialogue_node",
         savedNodeId
-      ) as DialogNode;
+      ) as DialogueNode;
       targetId = saved?.nextNode?.id || savedNodeId;
     }
     // 获取目标节点，判断是否需要执行副作用
     const targetNode = ConfigLoader.instance.getConfigByTableNameAndKey(
-      "dialog_node",
+      "dialogue_node",
       targetId
-    ) as DialogNode;
+    ) as DialogueNode;
     if (!targetNode) {
       return;
     }
     // 对于需要执行副作用的后台类型节点，使用 gotoNode 正确执行
     // 对于普通可见节点（Talk, SystemBlack, SystemTransparent），使用 jumpToNodeByIdWithoutEffects
     const effectNodeTypes = [
-      DialogNodeType.LoadBattle,
-      DialogNodeType.LoadScene,
-      DialogNodeType.GrantItems,
-      DialogNodeType.GrantQuest,
-      DialogNodeType.GrantAchievement,
-      DialogNodeType.Record,
-      DialogNodeType.CompleteQuest,
-      DialogNodeType.SoundEffect,
-      DialogNodeType.ShowToast,
-      DialogNodeType.HideAll,
-      DialogNodeType.End,
+      DialogueNodeType.LoadBattle,
+      DialogueNodeType.LoadScene,
+      DialogueNodeType.GrantItems,
+      DialogueNodeType.GrantQuest,
+      DialogueNodeType.GrantAchievement,
+      DialogueNodeType.Record,
+      DialogueNodeType.CompleteQuest,
+      DialogueNodeType.SoundEffect,
+      DialogueNodeType.ShowToast,
+      DialogueNodeType.HideAll,
+      DialogueNodeType.End,
     ];
     if (effectNodeTypes.includes(targetNode.type)) {
       // 使用 gotoNode 执行节点效果
@@ -244,33 +244,33 @@ export class DialogManager {
   skip(): void {
     if (!this._currentDialog || !this._currentNode) return;
     if ((this._currentNode.choices?.choices || []).length) return;
-    let cursor: DialogNode | undefined = this._currentNode.nextNode;
+    let cursor: DialogueNode | undefined = this._currentNode.nextNode;
     let guard = 0;
     while (cursor && guard++ < 100) {
       switch (cursor.type) {
-        case DialogNodeType.GrantQuest:
-        case DialogNodeType.GrantAchievement:
-        case DialogNodeType.Record:
-        case DialogNodeType.SoundEffect:
-        case DialogNodeType.ShowToast:
-        case DialogNodeType.CompleteQuest: {
+        case DialogueNodeType.GrantQuest:
+        case DialogueNodeType.GrantAchievement:
+        case DialogueNodeType.Record:
+        case DialogueNodeType.SoundEffect:
+        case DialogueNodeType.ShowToast:
+        case DialogueNodeType.CompleteQuest: {
           this.executeNodeEffects(cursor);
           cursor = cursor.nextNode;
           continue;
         }
-        case DialogNodeType.GrantItems: {
+        case DialogueNodeType.GrantItems: {
           this._currentNode = cursor;
-          EventBus.emit(DialogEvents.DialogNodeEnter, this._currentDialog, cursor);
+          EventBus.emit(DialogueEvents.DialogueNodeEnter, this._currentDialog, cursor);
           this.executeNodeEffects(cursor);
           return;
         }
-        case DialogNodeType.SystemBlack:
-        case DialogNodeType.SystemTransparent:
-        case DialogNodeType.Talk: {
+        case DialogueNodeType.SystemBlack:
+        case DialogueNodeType.SystemTransparent:
+        case DialogueNodeType.Talk: {
           if ((cursor.choices?.choices || []).length) {
             this._currentNode = cursor;
             EventBus.emit(
-              DialogEvents.DialogNodeEnter,
+              DialogueEvents.DialogueNodeEnter,
               this._currentDialog,
               cursor
             );
@@ -279,10 +279,10 @@ export class DialogManager {
           cursor = cursor.nextNode;
           continue;
         }
-        case DialogNodeType.LoadBattle:
-        case DialogNodeType.LoadScene:
-        case DialogNodeType.HideAll:
-        case DialogNodeType.End: {
+        case DialogueNodeType.LoadBattle:
+        case DialogueNodeType.LoadScene:
+        case DialogueNodeType.HideAll:
+        case DialogueNodeType.End: {
           this.gotoNode(cursor);
           return;
         }
@@ -292,8 +292,8 @@ export class DialogManager {
         }
       }
     }
-    this.emitDialogCompletedIfNeeded();
-    EventBus.emit(DialogEvents.DialogEnd, this._currentDialog);
+    this.emitDialogueCompletedIfNeeded();
+    EventBus.emit(DialogueEvents.DialogueEnd, this._currentDialog);
     this._currentDialog = undefined;
     this._currentNode = undefined;
   }
@@ -301,8 +301,8 @@ export class DialogManager {
     const next = this._currentNode?.nextNode;
 
     if (!next) {
-      this.emitDialogCompletedIfNeeded();
-      EventBus.emit(DialogEvents.DialogEnd, this._currentDialog);
+      this.emitDialogueCompletedIfNeeded();
+      EventBus.emit(DialogueEvents.DialogueEnd, this._currentDialog);
       this._currentDialog = undefined;
       this._currentNode = undefined;
       return;
@@ -310,17 +310,17 @@ export class DialogManager {
     // simulate entering next preloaded node
     this.gotoNode(next);
   }
-  private emitDialogCompletedIfNeeded(): void {
+  private emitDialogueCompletedIfNeeded(): void {
     if (this._dialogCompletedEmitted) return;
     if (!this._currentDialog) return;
     this._dialogCompletedEmitted = true;
-    EventBus.emit(QuestEvents.DialogCompleted, this._currentDialog.id);
+    EventBus.emit(QuestEvents.DialogueCompleted, this._currentDialog.id);
   }
-  private executeNodeEffects(node: DialogNode): void {
-    console.log(`[DialogManager] executeNodeEffects: ${node.id}, type: ${node.type}, achievements:`, node.achievements);
+  private executeNodeEffects(node: DialogueNode): void {
+    console.log(`[DialogueManager] executeNodeEffects: ${node.id}, type: ${node.type}, achievements:`, node.achievements);
     // 通用处理：所有节点类型都检查 quests 和 achievements 字段
     // 注意：CompleteQuest 节点的 quests 字段表示要完成的任务，不是要接受的任务
-    if (node.type !== DialogNodeType.CompleteQuest && Array.isArray(node.quests) && node.quests.length > 0) {
+    if (node.type !== DialogueNodeType.CompleteQuest && Array.isArray(node.quests) && node.quests.length > 0) {
       node.quests.forEach((q) => {
         // q 可能是 Quest 对象（引用解析成功），也可能是字符串 ID（引用解析失败）
         let questId: string | undefined;
@@ -331,20 +331,20 @@ export class DialogManager {
         }
         if (questId) {
           const accepted = QuestManager.instance.accept(questId);
-          console.log(`[DialogManager] Grant quest: ${questId}, accepted:`, !!accepted);
+          console.log(`[DialogueManager] Grant quest: ${questId}, accepted:`, !!accepted);
         }
       });
     }
 
     if (Array.isArray(node.achievements) && node.achievements.length > 0) {
-      console.log(`[DialogManager] Node ${node.id} has achievements:`, node.achievements);
+      console.log(`[DialogueManager] Node ${node.id} has achievements:`, node.achievements);
       node.achievements.forEach((a) => {
         // a 可能是 Achievement 实例（引用解析成功），也可能是 null（引用解析失败）
         // 还可能是原始字符串 ID（如果引用解析没有生效）
         let achievementId: string | undefined;
 
         if (a === null || a === undefined) {
-          console.warn(`[DialogManager] Achievement reference is null/undefined`);
+          console.warn(`[DialogueManager] Achievement reference is null/undefined`);
           return;
         }
 
@@ -357,27 +357,27 @@ export class DialogManager {
         }
 
         if (!achievementId) {
-          console.warn(`[DialogManager] Cannot get achievement ID from:`, a);
+          console.warn(`[DialogueManager] Cannot get achievement ID from:`, a);
           return;
         }
 
         const inst = AchievementManager.instance.getAchievement(achievementId);
-        console.log(`[DialogManager] Trying to grant achievement: ${achievementId}, found:`, !!inst, 'isUnlocked:', inst?.isUnlocked);
+        console.log(`[DialogueManager] Trying to grant achievement: ${achievementId}, found:`, !!inst, 'isUnlocked:', inst?.isUnlocked);
 
         if (inst && !inst.isUnlocked) {
           const ok = AchievementManager.instance.forceUnlock(achievementId);
-          console.log(`[DialogManager] Grant achievement: ${achievementId}, unlocked:`, ok);
+          console.log(`[DialogueManager] Grant achievement: ${achievementId}, unlocked:`, ok);
         }
       });
     }
 
     // 按节点类型处理特定效果
     switch (node.type) {
-      case DialogNodeType.GrantQuest:
-      case DialogNodeType.GrantAchievement:
+      case DialogueNodeType.GrantQuest:
+      case DialogueNodeType.GrantAchievement:
         // 已在上面通用处理中完成
         return;
-      case DialogNodeType.GrantItems: {
+      case DialogueNodeType.GrantItems: {
         if (Array.isArray(node.items)) {
           const grouped: any[] = [];
           const map: Record<string, { item: any; count: number }> = {};
@@ -397,43 +397,43 @@ export class DialogManager {
             else map[id] = { item: it, count: 1 };
           }
           for (const k in map) grouped.push(map[k]);
-          EventBus.emit(DialogEvents.GainedItems, grouped);
+          EventBus.emit(DialogueEvents.GainedItems, grouped);
         }
         return;
       }
-      case DialogNodeType.Record: {
+      case DialogueNodeType.Record: {
         if (node.record) {
-          EventBus.emit(DialogEvents.NeedUpdateRecord, node.record);
+          EventBus.emit(DialogueEvents.NeedUpdateRecord, node.record);
         }
         return;
       }
-      case DialogNodeType.SoundEffect: {
+      case DialogueNodeType.SoundEffect: {
         const key = node.content?.text || "";
-        EventBus.emit(DialogEvents.NeedPlaySoundEffect, key);
+        EventBus.emit(DialogueEvents.NeedPlaySoundEffect, key);
         return;
       }
-      case DialogNodeType.ShowToast: {
+      case DialogueNodeType.ShowToast: {
         const msg = node.content?.text || "";
-        EventBus.emit(DialogEvents.NeedShowToast, msg);
+        EventBus.emit(DialogueEvents.NeedShowToast, msg);
         return;
       }
-      case DialogNodeType.LoadScene: {
+      case DialogueNodeType.LoadScene: {
         const scene = node.content?.text || "";
-        EventBus.emit(DialogEvents.NeedLoadScene, scene);
+        EventBus.emit(DialogueEvents.NeedLoadScene, scene);
         return;
       }
-      case DialogNodeType.LoadBattle: {
+      case DialogueNodeType.LoadBattle: {
         this._waitingForBattle = true;
         // 不发射 DialogEnd，改为发射 DialogPaused，防止其他监听器误认为对话结束而重复触发
-        EventBus.emit(DialogEvents.DialogPaused, this._currentDialog as any);
-        EventBus.emit(DialogEvents.NeedLoadBattle, { enemy: node.enemy });
-        EventBus.once(DialogEvents.BattleVictory, () => {
+        EventBus.emit(DialogueEvents.DialoguePaused, this._currentDialog as any);
+        EventBus.emit(DialogueEvents.NeedLoadBattle, { enemy: node.enemy });
+        EventBus.once(DialogueEvents.BattleVictory, () => {
           this._waitingForBattle = false;
           this.advanceNext();
         });
         return;
       }
-      case DialogNodeType.CompleteQuest: {
+      case DialogueNodeType.CompleteQuest: {
         // 强制完成指定的任务（跳过目标检查）
         if (Array.isArray(node.quests) && node.quests.length > 0) {
           node.quests.forEach((q) => {
@@ -446,7 +446,7 @@ export class DialogManager {
             }
             if (questId) {
               const success = QuestManager.instance.complete(questId, true);
-              console.log(`[DialogManager] Complete quest: ${questId}, success:`, success);
+              console.log(`[DialogueManager] Complete quest: ${questId}, success:`, success);
             }
           });
         }
@@ -456,10 +456,10 @@ export class DialogManager {
         return;
     }
   }
-  get currentDialog(): Dialog | undefined {
+  get currentDialog(): Dialogue | undefined {
     return this._currentDialog;
   }
-  get currentNode(): DialogNode | undefined {
+  get currentNode(): DialogueNode | undefined {
     return this._currentNode;
   }
   get isWaitingForBattle(): boolean {

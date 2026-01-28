@@ -1,5 +1,5 @@
 import { _decorator, Component, Node, Label, Sprite, SpriteFrame, resources, UITransform } from "cc";
-import { DialogChoice } from "../../type";
+import { DialogueChoice } from "../../type";
 const { ccclass, property } = _decorator;
 
 @ccclass("ChoiceButton")
@@ -13,8 +13,8 @@ export class ChoiceButton extends Component {
   @property(Label)
   public choiceTextLabel: Label = null;
 
-  private _choice: DialogChoice | null = null;
-  private _onClick: ((choice: DialogChoice) => void) | null = null;
+  private _choice: DialogueChoice | null = null;
+  private _onClick: ((choice: DialogueChoice) => void) | null = null;
 
   onLoad() {
     this.node.on(Node.EventType.TOUCH_END, this.onClicked, this);
@@ -24,7 +24,7 @@ export class ChoiceButton extends Component {
     this.node.off(Node.EventType.TOUCH_END, this.onClicked, this);
   }
 
-  public setChoice(choice: DialogChoice, onClick?: (choice: DialogChoice) => void): void {
+  public setChoice(choice: DialogueChoice, onClick?: (choice: DialogueChoice) => void): void {
     this._choice = choice;
     this._onClick = onClick || null;
     const text = choice?.text || "";

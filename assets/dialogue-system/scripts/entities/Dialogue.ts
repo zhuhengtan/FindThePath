@@ -1,27 +1,27 @@
 import { Actor } from "./Actor";
-import { DialogNode } from "./DialogNode";
+import { DialogueNode } from "./DialogueNode";
 import { Quest } from "./Quest";
 
-export enum DialogType {
+export enum DialogueType {
   /** 主线剧情 */
   Main = 'main',
   /** 支线剧情 */
   Sub = 'sub'
 }
 
-export class Dialog {
+export class Dialogue {
   id: number;
   title: string;
-  entryNode: DialogNode;
+  entryNode: DialogueNode;
   actors: Actor[];
-  type: DialogType
+  type: DialogueType
   condition: string;
   constructor(data: any) {
     this.id = Number(data.id);
     this.title = data.title;
-    this.entryNode = data.entryNode as DialogNode;
+    this.entryNode = data.entryNode as DialogueNode;
     this.actors = Array.isArray(data.actors) ? data.actors : [];
-    this.type = data.type as DialogType;
+    this.type = data.type as DialogueType;
     this.condition = data.condition || "";
   }
 }

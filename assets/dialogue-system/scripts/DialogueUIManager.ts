@@ -8,19 +8,19 @@ import {
   assetManager,
 } from "cc";
 import EventBus from "db://assets/hunter/utils/event-bus";
-import { DialogEvents, DialogNodeType, AnimationType, DialogNodeNextType, QuestEvents, AchievementEvents } from "../type";
-import { Dialog } from "./entities/Dialog";
-import { DialogNode } from "./entities/DialogNode";
-// 注意：避免静态导入 DialogUI 以打破循环依赖
+import { DialogueEvents, DialogueNodeType, AnimationType, DialogueNodeNextType, QuestEvents, AchievementEvents } from "../type";
+import { Dialogue } from "./entities/Dialogue";
+import { DialogueNode } from "./entities/DialogueNode";
+// 注意：避免静态导入 DialogueUI 以打破循环依赖
 import { QuestNotificationUI } from "../prefabs/QuestNotificationUI/QuestNotificationUI";
 import { AchievementNotificationUI } from "../prefabs/AchievementNotificationUI/AchievementNotificationUI";
 import { Actor } from "./entities/Actor";
-import DialogUI from "../prefabs/DialogUI/DialogUI";
+import DialogueUI from "../prefabs/DialogueUI/DialogueUI";
 const { ccclass, property } = _decorator;
 
-@ccclass("DialogUIManager")
-export class DialogUIManager extends Component {
-  private static _instance: DialogUIManager | null = null;
+@ccclass("DialogueUIManager")
+export class DialogueUIManager extends Component {
+  private static _instance: DialogueUIManager | null = null;
 
   @property(Prefab)
   public dialogUIPrefab: Prefab = null;
@@ -34,9 +34,9 @@ export class DialogUIManager extends Component {
   @property(Node)
   public uiRoot: Node = null;
 
-  private _dialogUIInstance: DialogUI | null = null;
-  private _loadingDialogUI = false;
-  private _lastNode: DialogNode | null = null;
+  private _dialogUIInstance: DialogueUI | null = null;
+  private _loadingDialogueUI = false;
+  private _lastNode: DialogueNode | null = null;
   private _autoAdvanceCallback: (() => void) | null = null;
   private _registered: boolean = false;
 
@@ -44,7 +44,7 @@ export class DialogUIManager extends Component {
     const loadFromBundle = (bundle: any) => {
       bundle.load(path, Prefab, (err: any, prefab: Prefab) => {
         if (err || !prefab) {
-          console.warn("[DialogUIManager] prefab load failed:", path, err);
+          console.warn("[DialogueUIManager] prefab load failed:", path, err);
           return;
         }
         cb(prefab);
@@ -57,23 +57,23 @@ export class DialogUIManager extends Component {
     }
     assetManager.loadBundle("main", (err, bundle) => {
       if (err || !bundle) {
-        console.warn("[DialogUIManager] main bundle missing", err);
+        console.warn("[DialogueUIManager] main bundle missing", err);
         return;
       }
       loadFromBundle(bundle);
     });
   }
 
-  public static getInstance(): DialogUIManager | null {
-    if (DialogUIManager._instance) return DialogUIManager._instance;
+  public static getInstance(): DialogueUIManager | null {
+    if (DialogueUIManager._instance) return DialogueUIManager._instance;
     const scene = director.getScene();
     if (!scene) return null;
     const stack: Node[] = [scene];
     while (stack.length) {
       const n = stack.pop();
-      const comp = n.getComponent(DialogUIManager);
+      const comp = n.getComponent(DialogueUIManager);
       if (comp) {
-        DialogUIManager._instance = comp;
+        DialogueUIManager._instance = comp;
         return comp;
       }
       if (n.children && n.children.length) stack.push(...n.children);
@@ -82,7 +82,7 @@ export class DialogUIManager extends Component {
   }
 
   onLoad() {
-    DialogUIManager._instance = this;
+    DialogueUIManager._instance = this;
 
     // Use self node as UI root if not specified
     if (!this.uiRoot) {
@@ -93,8 +93,8 @@ export class DialogUIManager extends Component {
   }
 
   onDestroy() {
-    if (DialogUIManager._instance === this) {
-      DialogUIManager._instance = null;
+    if (DialogueUIManager._instance === this) {
+      DialogueUIManager._instance = null;
     }
     this.unregisterEventListeners();
   }
@@ -107,17 +107,17 @@ export class DialogUIManager extends Component {
       AchievementEvents.AchievementUnlocked,
       this.onAchievementUnlocked.bind(this)
     );
-    EventBus.on(DialogEvents.DialogStart, (dialog: Dialog) => {
+    EventBus.on(DialogueEvents.DialogueStart, (dialog: Dialogue) => {
       this.startDialog(dialog);
     });
-    EventBus.on(DialogEvents.DialogNodeEnter, (dialog: Dialog, node: DialogNode) => {
+    EventBus.on(DialogueEvents.DialogueNodeEnter, (dialog: Dialogue, node: DialogueNode) => {
       this.renderNode(dialog, node);
     });
-    EventBus.on(DialogEvents.DialogEnd, (dialog: Dialog) => {
+    EventBus.on(DialogueEvents.DialogueEnd, (dialog: Dialogue) => {
       this.endDialog(dialog);
     });
     // 监听对话暂停事件（进入战斗时），隐藏对话 UI
-    EventBus.on(DialogEvents.DialogPaused, (dialog: Dialog) => {
+    EventBus.on(DialogueEvents.DialoguePaused, (dialog: Dialogue) => {
       this.endDialog(dialog);
     });
     this._registered = true;
@@ -131,21 +131,21 @@ export class DialogUIManager extends Component {
       AchievementEvents.AchievementUnlocked,
       this.onAchievementUnlocked.bind(this)
     );
-    EventBus.off(DialogEvents.DialogStart);
-    EventBus.off(DialogEvents.DialogNodeEnter);
-    EventBus.off(DialogEvents.DialogEnd);
-    EventBus.off(DialogEvents.DialogPaused);
+    EventBus.off(DialogueEvents.DialogueStart);
+    EventBus.off(DialogueEvents.DialogueNodeEnter);
+    EventBus.off(DialogueEvents.DialogueEnd);
+    EventBus.off(DialogueEvents.DialoguePaused);
     this._registered = false;
   }
 
-  public startDialog(dialog: Dialog): void {
+  public startDialog(dialog: Dialogue): void {
     if (!this.dialogUIPrefab) {
       return;
     }
-    this.ensureDialogUI();
+    this.ensureDialogueUI();
   }
 
-  public endDialog(dialog: Dialog): void {
+  public endDialog(dialog: Dialogue): void {
     if (this._dialogUIInstance) {
       this._dialogUIInstance.hide();
     }
@@ -155,7 +155,7 @@ export class DialogUIManager extends Component {
     this._dialogUIInstance?.renderLineWithActor(actor || null, content);
   }
 
-  public showChoice(dialog: Dialog, node: DialogNode): void {
+  public showChoice(dialog: Dialogue, node: DialogueNode): void {
     const prompt = node.content?.text || "";
     const list = node.choices?.choices || [];
     const layout = node.choices?.layout || "vertical";
@@ -164,7 +164,7 @@ export class DialogUIManager extends Component {
 
   public showSystemChoice(
     effect: "black" | "transparent",
-    node: DialogNode
+    node: DialogueNode
   ): void {
     const prompt = node.content?.text || "";
     const list = node.choices?.choices || [];
@@ -181,11 +181,11 @@ export class DialogUIManager extends Component {
     this._dialogUIInstance?.applyScreenEffect(effect);
   }
 
-  public renderNode(dialog: Dialog, node: DialogNode): void {
+  public renderNode(dialog: Dialogue, node: DialogueNode): void {
     if (!this.dialogUIPrefab) {
       return;
     }
-    this.ensureDialogUI();
+    this.ensureDialogueUI();
     const prev = this._lastNode;
     this._dialogUIInstance?.setCurrentNode(node);
     try {
@@ -194,7 +194,7 @@ export class DialogUIManager extends Component {
     this._lastNode = node;
   }
 
-  private ensureDialogUI(): void {
+  private ensureDialogueUI(): void {
     if (!this._dialogUIInstance && this.dialogUIPrefab) {
       const node = instantiate(this.dialogUIPrefab);
       node.setParent(this.uiRoot);
@@ -213,16 +213,16 @@ export class DialogUIManager extends Component {
   }
 
   private renderNodeInternal(
-    dialog: Dialog,
-    node: DialogNode,
-    prev?: DialogNode | null
+    dialog: Dialogue,
+    node: DialogueNode,
+    prev?: DialogueNode | null
   ): void {
     if (!this._dialogUIInstance || !node) return;
 
 
-    if (node.type === DialogNodeType.SystemBlack) {
+    if (node.type === DialogueNodeType.SystemBlack) {
 
-      const prevSameType = !!prev && prev.type === DialogNodeType.SystemBlack;
+      const prevSameType = !!prev && prev.type === DialogueNodeType.SystemBlack;
       if (prevSameType) {
         // 相同类型：只更新内容，避免 applyScreenEffect 导致的渐隐渐显
         (this._dialogUIInstance as any)?.updateSystemBlackContent(node.content);
@@ -231,11 +231,11 @@ export class DialogUIManager extends Component {
         (this._dialogUIInstance as any)?.applyScreenEffect("black");
         (this._dialogUIInstance as any)?.showSystemBlackContent(node.content);
       }
-      EventBus.emit(DialogEvents.DialogScreenChange, "black");
+      EventBus.emit(DialogueEvents.DialogueScreenChange, "black");
       const choices = node.choices?.choices || [];
       if (choices.length) {
         this.showSystemChoice("black", node);
-        EventBus.emit(DialogEvents.DialogChoiceRequired, dialog, node);
+        EventBus.emit(DialogueEvents.DialogueChoiceRequired, dialog, node);
       } else {
         const dUI2 = this._dialogUIInstance as any;
         dUI2?.hideSystemChoices && dUI2.hideSystemChoices("black");
@@ -243,10 +243,10 @@ export class DialogUIManager extends Component {
       }
       return;
     }
-    if (node.type === DialogNodeType.SystemTransparent) {
+    if (node.type === DialogueNodeType.SystemTransparent) {
 
       const prevSameType =
-        !!prev && prev.type === DialogNodeType.SystemTransparent;
+        !!prev && prev.type === DialogueNodeType.SystemTransparent;
       if (prevSameType) {
         // 相同类型：只更新内容
         (this._dialogUIInstance as any)?.updateSystemTransparentContent(
@@ -261,7 +261,7 @@ export class DialogUIManager extends Component {
       const choices = node.choices?.choices || [];
       if (choices.length) {
         this.showSystemChoice("transparent", node);
-        EventBus.emit(DialogEvents.DialogChoiceRequired, dialog, node);
+        EventBus.emit(DialogueEvents.DialogueChoiceRequired, dialog, node);
       } else {
         const dUI2 = this._dialogUIInstance as any;
         dUI2?.hideSystemChoices && dUI2.hideSystemChoices("transparent");
@@ -269,11 +269,11 @@ export class DialogUIManager extends Component {
       }
       return;
     }
-    if (node.type === DialogNodeType.Talk) {
+    if (node.type === DialogueNodeType.Talk) {
       const content = node.content || ({} as any);
       const text = content?.text || "";
       const dUI = this._dialogUIInstance as any
-      const prevSameType = !!prev && prev.type === DialogNodeType.Talk;
+      const prevSameType = !!prev && prev.type === DialogueNodeType.Talk;
       if (prevSameType) {
         // 修复 actor 比较逻辑：防止将两个 null 误判为同一 actor
         const prevActorId = prev?.actor
@@ -323,7 +323,7 @@ export class DialogUIManager extends Component {
         const choices = node.choices?.choices || [];
         if (choices.length) {
           this.showChoice(dialog, node);
-          EventBus.emit(DialogEvents.DialogChoiceRequired, dialog, node);
+          EventBus.emit(DialogueEvents.DialogueChoiceRequired, dialog, node);
         } else {
           if (dUI?.hideChoices) dUI.hideChoices();
           this.maybeScheduleAutoAdvance(node);
@@ -334,26 +334,26 @@ export class DialogUIManager extends Component {
         const choices = node.choices?.choices || [];
         if (choices.length) {
           this.showChoice(dialog, node);
-          EventBus.emit(DialogEvents.DialogChoiceRequired, dialog, node);
+          EventBus.emit(DialogueEvents.DialogueChoiceRequired, dialog, node);
         } else {
           const dUI2 = this._dialogUIInstance as any;
           if (dUI2?.hideChoices) dUI2.hideChoices();
           this.maybeScheduleAutoAdvance(node);
         }
       }
-      EventBus.emit(DialogEvents.ActorSpoken, node.actor?.id, text);
+      EventBus.emit(DialogueEvents.ActorSpoken, node.actor?.id, text);
       return;
     }
 
   }
 
-  private maybeScheduleAutoAdvance(node: DialogNode): void {
+  private maybeScheduleAutoAdvance(node: DialogueNode): void {
     try {
       if (!node) return;
       const choicesLen = (node.choices?.choices || []).length;
       if (choicesLen > 0) return;
       // 仅在明确标记为 auto 时才自动前进
-      if (node.nextType !== DialogNodeNextType.Auto) return;
+      if (node.nextType !== DialogueNodeNextType.Auto) return;
       if (this._autoAdvanceCallback) {
         this.unschedule(this._autoAdvanceCallback as any);
         this._autoAdvanceCallback = null;
@@ -373,7 +373,7 @@ export class DialogUIManager extends Component {
         delay = 0.1;
       }
       this._autoAdvanceCallback = () => {
-        EventBus.emit(DialogEvents.DialogNextRequested);
+        EventBus.emit(DialogueEvents.DialogueNextRequested);
       };
       this.scheduleOnce(this._autoAdvanceCallback as any, delay);
     } catch { }
@@ -436,4 +436,4 @@ export class DialogUIManager extends Component {
   }
 }
 
-export default DialogUIManager;
+export default DialogueUIManager;

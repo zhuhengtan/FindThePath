@@ -62,8 +62,8 @@ export class QuestManager {
   private _onLevelCompletedHandler = (levelId: string | number) => {
     this.onLevelCompleted(levelId);
   };
-  private _onDialogCompletedHandler = (dialogId: string | number) => {
-    this.onDialogCompleted(dialogId);
+  private _onDialogueCompletedHandler = (dialogId: string | number) => {
+    this.onDialogueCompleted(dialogId);
   };
   private _onSkillUsedHandler = (skillId: string | number, count: number = 1) => {
     this.onSkillUsed(skillId, count);
@@ -110,7 +110,7 @@ export class QuestManager {
     // 监听关卡完成事件
     EventBus.on(QuestEvents.LevelCompleted, this._onLevelCompletedHandler);
     // 监听对话完成事件
-    EventBus.on(QuestEvents.DialogCompleted, this._onDialogCompletedHandler);
+    EventBus.on(QuestEvents.DialogueCompleted, this._onDialogueCompletedHandler);
     // 监听技能使用事件
     EventBus.on(QuestEvents.SkillUsed, this._onSkillUsedHandler);
     // 监听玩家升级事件
@@ -142,7 +142,7 @@ export class QuestManager {
     EventBus.detach(QuestEvents.ItemCollected, this._onItemCollectedHandler);
     EventBus.detach(QuestEvents.BattleWon, this._onBattleWonHandler);
     EventBus.detach(QuestEvents.LevelCompleted, this._onLevelCompletedHandler);
-    EventBus.detach(QuestEvents.DialogCompleted, this._onDialogCompletedHandler);
+    EventBus.detach(QuestEvents.DialogueCompleted, this._onDialogueCompletedHandler);
     EventBus.detach(QuestEvents.SkillUsed, this._onSkillUsedHandler);
     EventBus.detach(QuestEvents.PlayerLevelUp, this._onPlayerLevelUpHandler);
     EventBus.detach(QuestEvents.EquipmentEquipped, this._onEquipmentEquippedHandler);
@@ -175,9 +175,9 @@ export class QuestManager {
     this.updateProgressByType(QuestObjectiveType.CompleteLevel, levelId, 1);
   }
 
-  private onDialogCompleted(dialogId: string | number): void {
-    console.log("[QuestManager] onDialogCompleted:", dialogId);
-    this.updateProgressByType(QuestObjectiveType.CompleteDialog, dialogId, 1);
+  private onDialogueCompleted(dialogId: string | number): void {
+    console.log("[QuestManager] onDialogueCompleted:", dialogId);
+    this.updateProgressByType(QuestObjectiveType.CompleteDialogue, dialogId, 1);
   }
 
   private onSkillUsed(skillId: string | number, count: number = 1): void {

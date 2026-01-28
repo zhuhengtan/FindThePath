@@ -1,7 +1,7 @@
 import { ConfigLoader } from "db://assets/hunter/utils/config-loader";
-import { Dialog } from "./entities/Dialog";
+import { Dialogue } from "./entities/Dialogue";
 import * as Parser from "expr-eval";
-import { dialogManager, questManager, achievementManager } from "./index";
+import { dialogueManager, questManager, achievementManager } from "./index";
 
 /**
  * 剧情触发管理器
@@ -60,14 +60,14 @@ export class DialogueTriggerManager {
     scene: string,
     timing: string,
     trigger?: Record<string, any>
-  ): Dialog | null {
+  ): Dialogue | null {
     // 0. 如果对话正在等待战斗结果，不触发新对话
-    if (dialogManager?.isWaitingForBattle) {
+    if (dialogueManager?.isWaitingForBattle) {
       return null;
     }
 
     // 1. 获取所有配置的 Dialog
-    const allDialogs = ConfigLoader.instance.getConfigsByTableName("dialog") as Dialog[];
+    const allDialogs = ConfigLoader.instance.getConfigsByTableName("dialogue") as Dialogue[];
     if (!allDialogs) return null;
 
     // 2. 遍历所有 Dialog
@@ -82,13 +82,13 @@ export class DialogueTriggerManager {
       if (!condition || !condition.trim()) {
         // 如果没有条件，直接触发
         this.startDialog(dialog);
-        return new Dialog(dialog);
+        return new Dialogue(dialog);
       }
 
       // 2.3 解析表达式
       if (this.checkCondition(condition, scene, timing, trigger)) {
         this.startDialog(dialog);
-        return new Dialog(dialog);
+        return new Dialogue(dialog);
       }
     }
 
@@ -98,8 +98,8 @@ export class DialogueTriggerManager {
   /**
    * 启动对话
    */
-  private startDialog(dialog: Dialog): void {
-    (dialogManager as any)?.start(dialog.id);
+  private startDialog(dialog: Dialogue): void {
+    (dialogueManager as any)?.start(dialog.id);
   }
 
   /**

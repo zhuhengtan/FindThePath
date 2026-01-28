@@ -1,4 +1,4 @@
-export enum DialogEvents {
+export enum DialogueEvents {
   /** 播放音效 */
   NeedPlaySoundEffect = "ds-need-play-sound-effect",
   /** 更新记录 */
@@ -10,22 +10,22 @@ export enum DialogEvents {
   /** 显示Toast */
   NeedShowToast = "ds-need-show-toast",
 
-  DialogStart = "ds-dialog-start",
-  DialogEnd = "ds-dialog-end",
+  DialogueStart = "ds-dialogue-start",
+  DialogueEnd = "ds-dialogue-end",
   /** 对话暂停（等待战斗结果） */
-  DialogPaused = "ds-dialog-paused",
-  DialogNodeEnter = "ds-dialog-node-enter",
-  DialogNodeExit = "ds-dialog-node-exit",
-  DialogChoiceRequired = "ds-dialog-choice-required",
-  DialogChoiceSelected = "ds-dialog-choice-selected",
+  DialoguePaused = "ds-dialogue-paused",
+  DialogueNodeEnter = "ds-dialogue-node-enter",
+  DialogueNodeExit = "ds-dialogue-node-exit",
+  DialogueChoiceRequired = "ds-dialogue-choice-required",
+  DialogueChoiceSelected = "ds-dialogue-choice-selected",
   ActorSpoken = "ds-actor-spoken",
-  DialogScreenChange = "ds-dialog-screen-change",
-  DialogGoScene = "ds-dialog-go-scene",
+  DialogueScreenChange = "ds-dialogue-screen-change",
+  DialogueGoScene = "ds-dialogue-go-scene",
   BattleVictory = "ds-battle-victory",
   GainedItems = "ds-gained-items",
-  DialogNextRequested = "ds-dialog-next-requested",
-  DialogSkipRequested = "ds-dialog-skip-requested",
-  DialogJumpToNodeRequested = "ds-dialog-jump-to-node-requested",
+  DialogueNextRequested = "ds-dialogue-next-requested",
+  DialogueSkipRequested = "ds-dialogue-skip-requested",
+  DialogueJumpToNodeRequested = "ds-dialogue-jump-to-node-requested",
 }
 
 /** 任务系统事件 */
@@ -88,7 +88,7 @@ export enum QuestEvents {
   /** 技能使用 */
   SkillUsed = "ds-skill-used",
   /** 对话完成 */
-  DialogCompleted = "ds-dialog-completed",
+  DialogueCompleted = "ds-dialogue-completed",
   /** 战斗结果 */
   BattleResult = "ds-battle-result",
   /** 战斗胜利 */
@@ -180,9 +180,9 @@ export enum QuestObjectiveType {
   /** 使用技能 */
   UseSkill = "useSkill",
   /** 完成对话 */
-  CompleteDialog = "completeDialog",
+  CompleteDialogueue = "completeDialogue",
   /** 完成特定对话 */
-  CompleteSpecificDialog = "completeSpecificDialog",
+  CompleteSpecificDialogueue = "completeSpecificDialogue",
   /** 与NPC对话 */
   TalkToNpc = "talkToNpc",
   /** 使用物品 */
@@ -376,7 +376,7 @@ export enum ButtonClickType {
   Scene = "scene",
 }
 
-export enum DialogNodeType {
+export enum DialogueNodeType {
   /**
    * 系统纯黑背景
    */
@@ -436,7 +436,7 @@ export enum DialogNodeType {
   End = "end",
 }
 
-export interface DialogChoice {
+export interface DialogueChoice {
   /**
    * 选择的键值
    */
@@ -472,7 +472,7 @@ export interface DialogChoice {
   };
 };
 
-export interface DialogNodeContent {
+export interface DialogueNodeContent {
   /**
    * 图片路径、宽、高
    */
@@ -491,7 +491,7 @@ export interface DialogNodeContent {
   textAnimation?: AnimationType
 }
 
-export enum DialogNodeNextType {
+export enum DialogueNodeNextType {
   /**
    * 顺序执行下一个节点
    */

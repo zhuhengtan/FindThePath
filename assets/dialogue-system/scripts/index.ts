@@ -1,13 +1,13 @@
 // 管理器
-import { DialogManager } from "./DialogManager";
+import { DialogueManager } from "./DialogueManager";
 import { QuestManager, IQuestManagerSaveData } from "./QuestManager";
 import { AchievementManager, IAchievementManagerSaveData } from "./AchievementManager";
 import { DailyActivityManager, IDailyActivitySaveData } from "./DailyActivityManager";
 
 
 // 实体类导出
-export { Dialog, DialogType } from "./entities/Dialog";
-export { DialogNode } from "./entities/DialogNode";
+export { Dialogue, DialogueType } from "./entities/Dialogue";
+export { DialogueNode } from "./entities/DialogueNode";
 export { Actor } from "./entities/Actor";
 export { Quest } from "./entities/Quest";
 export type { IQuestData, IQuestSaveData } from "./entities/Quest";
@@ -27,7 +27,7 @@ export { Title } from "./entities/Title";
 export type { ITitleData, ITitleEffect } from "./entities/Title";
 
 // 管理器类导出
-export { DialogManager } from "./DialogManager";
+export { DialogueManager } from "./DialogueManager";
 export { QuestManager } from "./QuestManager";
 export type { IQuestManagerSaveData } from "./QuestManager";
 export { AchievementManager } from "./AchievementManager";
@@ -36,7 +36,7 @@ export { DailyActivityManager } from "./DailyActivityManager";
 export type { IActivityRewardConfig, IDailyActivitySaveData } from "./DailyActivityManager";
 
 // 管理器单例
-export const dialogManager = DialogManager.instance;
+export const dialogueManager = DialogueManager.instance;
 export const questManager = QuestManager.instance;
 export const achievementManager = AchievementManager.instance;
 export const dailyActivityManager = DailyActivityManager.instance;

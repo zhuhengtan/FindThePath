@@ -11,8 +11,8 @@ configs/player_level;level;;player_level;PlayerLevel;玩家等级配置表
 configs/player_skill;id;;player_skill;PlayerSkill;技能配置表
 configs/player_skill_node;id;;player_skill_node;PlayerSkillNode;技能详细节点表
 configs/actor;id;;actor;Actor;演员配置表
-configs/dialog;id;;dialog;Dialog;对话配置表
-configs/dialog_node;id;;dialog_node;DialogNode;对话节点表
+configs/dialogue;id;;dialogue;Dialogue;对话配置表
+configs/dialogue_node;id;;dialogue_node;DialogueNode;对话节点表
 configs/quest;id;;quest;Quest;任务配置表
 configs/achievement;id;;achievement;Achievement;成就配置表
 configs/title;id;;title;Title;称号配置表
