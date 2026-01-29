@@ -4,3 +4,6 @@
 [submodule "assets/hunter-ui"]
 	path = assets/hunter-ui
 	url = git@github.com:zhuhengtan/cc-hunter-ui.git
+[submodule "assets/dialogue-system"]
+	path = assets/dialogue-system
+	url = git@github.com:zhuhengtan/cc-dialogue-system.git
