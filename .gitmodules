@@ -1,3 +1,6 @@
 [submodule "assets/hunter"]
 	path = assets/hunter
 	url = git@github.com:zhuhengtan/cc-hunter.git
+[submodule "assets/hunter-ui"]
+	path = assets/hunter-ui
+	url = git@github.com:zhuhengtan/cc-hunter-ui.git
