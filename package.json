@@ -4,6 +4,13 @@
   "creator": {
     "version": "3.8.7"
   },
+  "scripts": {
+    "release": "node scripts/release-interactive.js",
+    "release:hunter": "node scripts/release.js hunter",
+    "release:hunter-ui": "node scripts/release.js hunter-ui",
+    "release:dialogue": "node scripts/release.js dialogue-system",
+    "release:main": "node scripts/release.js main"
+  },
   "dependencies": {
     "expr-eval": "^2.0.2",
     "js-event-bus": "^1.1.1",
