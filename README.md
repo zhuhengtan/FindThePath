@@ -28,7 +28,7 @@ assets/
 | 模块 | 最小版本 | 说明 |
 |------|----------|------|
 | [hunter](./assets/hunter/README.md) | `1.0.0` | 核心工具库，所有模块依赖 |
-| [hunter-ui](./assets/hunter-ui/README.md) | `1.0.0` | UI 组件库，依赖 hunter |
+| [hunter-ui](./assets/hunter-ui/README.md) | `1.0.1` | UI 组件库，依赖 hunter |
 | [dialogue-system](./assets/dialogue-system/README.md) | `1.0.0` | 对话系统，依赖 hunter, hunter-ui |
 | inventory-system | - | 开发中 |
 | skill-system | - | 开发中 |

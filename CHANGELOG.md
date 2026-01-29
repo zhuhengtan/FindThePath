@@ -18,6 +18,13 @@
 
 ---
 
+## [1.0.1] - 2026-01-29
+
+### Fixed
+- **Hunter-UI - UI 组件库**: 移除 ToastManager 容器节点，使用 prefab layer 控制排序
+
+---
+
 ## [1.0.0] - 2026-01-29
 
 ### Added
