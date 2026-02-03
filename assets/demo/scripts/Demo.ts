@@ -1,8 +1,6 @@
 import { _decorator, Component, Node } from "cc";
 import { showToast } from "db://assets/hunter-ui/Toast/ToastManager";
 import { showConfirm } from "db://assets/hunter-ui/Modal/ModalConfirmManager";
-import { dialogueManager } from "db://assets/dialogue-system/scripts";
-import { ConfigLoader } from "db://assets/hunter/utils/config-loader";
 const { ccclass, property } = _decorator;
 
 @ccclass("Demo")
@@ -32,12 +30,6 @@ export class Demo extends Component {
   }
 
   public onClickDialogueBtn() {
-    // 检查配置加载状态
-    const allDialogues = ConfigLoader.instance.getConfigsByTableName("dialogue");
-    console.log("[Demo] All dialogues from ConfigLoader:", allDialogues);
-    console.log("[Demo] ConfigLoader instance:", ConfigLoader.instance);
-
-    // 播放测试剧情（ID 为 1，可根据实际配置修改）
-    dialogueManager.start(1);
+    showToast('dialogue-system 已移除');
   }
 }

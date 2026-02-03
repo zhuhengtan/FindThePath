@@ -15,7 +15,6 @@
 assets/
 ├── hunter/              # 核心工具库
 ├── hunter-ui/           # UI 组件库
-├── dialogue-system/     # 对话/任务/成就系统
 ├── inventory-system/    # 背包/物品系统（开发中）
 ├── skill-system/        # 技能系统（开发中）
 ├── launch/              # 启动场景
@@ -29,7 +28,6 @@ assets/
 |------|----------|------|
 | [hunter](./assets/hunter/README.md) | `1.0.0` | 核心工具库，所有模块依赖 |
 | [hunter-ui](./assets/hunter-ui/README.md) | `1.0.1` | UI 组件库，依赖 hunter |
-| [dialogue-system](./assets/dialogue-system/README.md) | `1.0.0` | 对话系统，依赖 hunter, hunter-ui |
 | inventory-system | - | 开发中 |
 | skill-system | - | 开发中 |
 
@@ -38,8 +36,8 @@ assets/
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/yourname/2d-game-template.git
-cd 2d-game-template
+git clone https://github.com/yourname/FindThePath.git
+cd FindThePath
 ```
 
 ### 2. 使用 Cocos Creator 打开
@@ -56,7 +54,6 @@ cd 2d-game-template
 
 - [hunter - 核心工具库](./assets/hunter/README.md)
 - [hunter-ui - UI 组件库](./assets/hunter-ui/README.md)
-- [dialogue-system - 对话系统](./assets/dialogue-system/README.md)
 
 ## 🔧 开发规范
 
@@ -64,7 +61,7 @@ cd 2d-game-template
 
 1. `hunter` 作为基础层，不依赖任何其他模块
 2. `hunter-ui` 仅依赖 `hunter`
-3. 功能模块（dialogue-system 等）可依赖 `hunter` 和 `hunter-ui`
+3. 功能模块（可选）可依赖 `hunter` 和 `hunter-ui`
 4. `main-game` 可依赖所有模块
 
 ### 版本号规范

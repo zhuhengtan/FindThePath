@@ -1,5 +1,5 @@
 {
-  "name": "2d-game-template",
+  "name": "FindThePath",
   "uuid": "c99b23b7-cc1b-4bf1-bed2-5b8de4e39da9",
   "creator": {
     "version": "3.8.7"
@@ -8,7 +8,6 @@
     "release": "node scripts/release-interactive.js",
     "release:hunter": "node scripts/release.js hunter",
     "release:hunter-ui": "node scripts/release.js hunter-ui",
-    "release:dialogue": "node scripts/release.js dialogue-system",
     "release:main": "node scripts/release.js main"
   },
   "dependencies": {

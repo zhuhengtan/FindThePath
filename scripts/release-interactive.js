@@ -25,8 +25,7 @@ const ASSETS_DIR = path.join(PROJECT_ROOT, 'assets');
 const MODULES = [
   { key: '1', name: 'hunter', label: 'hunter (核心工具库)', remoteName: 'cc-hunter' },
   { key: '2', name: 'hunter-ui', label: 'hunter-ui (UI组件库)', remoteName: 'cc-hunter-ui' },
-  { key: '3', name: 'dialogue-system', label: 'dialogue-system (对话系统)', remoteName: 'cc-dialogue-system' },
-  { key: '4', name: 'main', label: '主项目 (real-2d-game-template)', remoteName: 'real-2d-game-template' },
+  { key: '3', name: 'main', label: '主项目 (real-FindThePath)', remoteName: 'real-FindThePath' },
 ];
 
 const VERSION_TYPES = [
@@ -115,7 +114,7 @@ async function main() {
   // 1. 选择模块
   console.log('请选择要发布的模块：');
   MODULES.forEach(m => console.log(`  ${m.key}. ${m.label}`));
-  const moduleChoice = await ask('\n请输入选项 (1-4): ');
+  const moduleChoice = await ask('\n请输入选项 (1-3): ');
   const selectedModule = MODULES.find(m => m.key === moduleChoice);
   if (!selectedModule) {
     console.error('无效选择');

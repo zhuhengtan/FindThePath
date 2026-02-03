@@ -29,7 +29,6 @@ node scripts/release.js <模块名> <版本号> --type <类型> --message "<说�
 # 示例
 node scripts/release.js hunter 1.0.1 --type patch --message "修复存储兼容性问题"
 node scripts/release.js hunter-ui 1.1.0 --type minor --message "新增 Loading 组件"
-node scripts/release.js dialogue-system 1.0.2 --type patch --message "修复任务进度bug"
 node scripts/release.js main 1.1.0 --type minor --message "更新所有模块"
 ```
 
@@ -39,8 +38,6 @@ node scripts/release.js main 1.1.0 --type minor --message "更新所有模块"
 |--------|----------|----------|
 | hunter | assets/hunter | cc-hunter |
 | hunter-ui | assets/hunter-ui | cc-hunter-ui |
-| dialogue-system | assets/dialogue-system | cc-dialogue-system |
-| main | / | real-2d-game-template |
 
 ## 版本类型说明
 

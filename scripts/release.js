@@ -12,7 +12,7 @@
  *   node scripts/release.js main 1.0.1 --type patch --message "更新依赖版本"
  * 
  * 参数：
- *   module   - 模块名称：hunter, hunter-ui, dialogue-system, main
+ *   module   - 模块名称：hunter, hunter-ui, main
  *   version  - 新版本号，如 1.0.1
  *   --type   - 变更类型：major, minor, patch (用于 CHANGELOG 分类)
  *   --message - 变更说明
@@ -37,15 +37,10 @@ const MODULES = {
     name: 'Hunter-UI - UI 组件库',
     remoteName: 'cc-hunter-ui',
   },
-  'dialogue-system': {
-    dir: path.join(ASSETS_DIR, 'dialogue-system'),
-    name: 'Dialogue-System - 对话系统',
-    remoteName: 'cc-dialogue-system',
-  },
   'main': {
     dir: PROJECT_ROOT,
     name: '2D Game Template',
-    remoteName: 'real-2d-game-template',
+    remoteName: 'real-FindThePath',
     isMain: true,
   },
 };
@@ -55,7 +50,7 @@ function parseArgs() {
   const args = process.argv.slice(2);
   if (args.length < 2) {
     console.error('用法: node scripts/release.js <module> <version> [--type <type>] [--message <message>]');
-    console.error('模块: hunter, hunter-ui, dialogue-system, main');
+    console.error('模块: hunter, hunter-ui, main');
     process.exit(1);
   }
 

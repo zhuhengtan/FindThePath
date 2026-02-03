@@ -43,8 +43,3 @@
   - TabBar 标签栏
   - ProgressBar 进度条
   - DamageNumber 伤害数字
-- **dialogue-system** v1.0.0 - 对话系统
-  - DialogueManager 对话管理
-  - QuestManager 任务管理
-  - AchievementManager 成就管理
-  - DialogueUI 对话界面
