@@ -23,8 +23,8 @@ const PROJECT_ROOT = path.join(__dirname, '..');
 const ASSETS_DIR = path.join(PROJECT_ROOT, 'assets');
 
 const MODULES = [
-  { key: '1', name: 'hunter', label: 'hunter (核心工具库)', remoteName: 'cc-hunter' },
-  { key: '2', name: 'hunter-ui', label: 'hunter-ui (UI组件库)', remoteName: 'cc-hunter-ui' },
+  { key: '1', name: 'cc-hunter', label: 'cc-hunter (核心工具库)', remoteName: 'cc-hunter' },
+  { key: '2', name: 'cc-hunter-ui', label: 'cc-hunter-ui (UI组件库)', remoteName: 'cc-hunter-ui' },
   { key: '3', name: 'main', label: '主项目 (real-FindThePath)', remoteName: 'real-FindThePath' },
 ];
 

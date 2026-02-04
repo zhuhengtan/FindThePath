@@ -14,7 +14,7 @@ description: 如何从项目中移除可选模块（如 dialogue-system、skill-
 | skill-system | assets/skill-system | 技能系统（规划中） |
 | inventory-system | assets/inventory-system | 背包系统（规划中） |
 
-> **注意**: `hunter` 和 `hunter-ui` 是核心模块，不建议移除。
+> **注意**: `cc-hunter` 和 `cc-hunter-ui` 是核心模块，不建议移除。
 
 ## 移除步骤
 

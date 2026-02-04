@@ -17,7 +17,7 @@ export class Launch extends Component {
   tipLabel: Label = null;
 
   // 启动时需要加载的分包列表
-  private _bundlesToLoad: string[] = ['hunter-ui', 'main-game'];
+  private _bundlesToLoad: string[] = ['cc-hunter-ui', 'main-game'];
   private _loadedCount: number = 0;
   private _totalBundles: number = 0;
 

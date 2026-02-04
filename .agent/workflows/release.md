@@ -27,8 +27,8 @@ npm run release
 node scripts/release.js <模块名> <版本号> --type <类型> --message "<说明>"
 
 # 示例
-node scripts/release.js hunter 1.0.1 --type patch --message "修复存储兼容性问题"
-node scripts/release.js hunter-ui 1.1.0 --type minor --message "新增 Loading 组件"
+node scripts/release.js cc-hunter 1.0.1 --type patch --message "修复存储兼容性问题"
+node scripts/release.js cc-hunter-ui 1.1.0 --type minor --message "新增 Loading 组件"
 node scripts/release.js main 1.1.0 --type minor --message "更新所有模块"
 ```
 
@@ -36,8 +36,8 @@ node scripts/release.js main 1.1.0 --type minor --message "更新所有模块"
 
 | 模块名 | 本地目录 | 远程仓库 |
 |--------|----------|----------|
-| hunter | assets/hunter | cc-hunter |
-| hunter-ui | assets/hunter-ui | cc-hunter-ui |
+| cc-hunter | assets/cc-hunter | cc-hunter |
+| cc-hunter-ui | assets/cc-hunter-ui | cc-hunter-ui |
 
 ## 版本类型说明
 
@@ -55,7 +55,7 @@ node scripts/release.js main 1.1.0 --type minor --message "更新所有模块"
 
 ```bash
 # 1. 进入模块目录
-cd assets/hunter
+cd assets/cc-hunter
 
 # 2. 提交并打标签
 git add .
@@ -66,7 +66,7 @@ git push origin main --tags
 # 3. 回到主项目更新 submodule 引用
 cd ../..
 git add .
-git commit -m "chore: update hunter to v1.0.1"
+git commit -m "chore: update cc-hunter to v1.0.1"
 git push origin main
 ```
 

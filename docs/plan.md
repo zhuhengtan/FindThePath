@@ -1,4 +1,4 @@
-﻿# FindThePath 开发计划（技术方案 + 里程碑）
+# FindThePath 开发计划（技术方案 + 里程碑）
 
 本文档面向开发落地，描述 FindThePath（旋转地块连通路径 + 断路自动掉头）的模块拆分、数据结构、关卡生成与可解性校验、以及云端存储/云函数的接口草案。
 
@@ -25,8 +25,8 @@
 - 引擎：Cocos Creator 3.8.7
 - 语言：TypeScript
 - 代码组织：遵循仓库模块化结构，基础设施优先复用现有模块
-  - hunter：事件、存储、时间、配置加载
-  - hunter-ui：弹窗、toast、通用 UI 组件
+  - cc-hunter：事件、存储、时间、配置加载
+  - cc-hunter-ui：弹窗、toast、通用 UI 组件
 - 资源加载：优先使用 Asset Bundle（main-game bundle 已存在）
 - 关卡可复现：所有程序化关卡必须由 seed + generatorVersion 唯一确定
 

@@ -6,8 +6,8 @@
   },
   "scripts": {
     "release": "node scripts/release-interactive.js",
-    "release:hunter": "node scripts/release.js hunter",
-    "release:hunter-ui": "node scripts/release.js hunter-ui",
+    "release:cc-hunter": "node scripts/release.js cc-hunter",
+    "release:cc-hunter-ui": "node scripts/release.js cc-hunter-ui",
     "release:main": "node scripts/release.js main"
   },
   "dependencies": {

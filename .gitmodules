@@ -1,6 +1,6 @@
-[submodule "assets/hunter"]
-	path = assets/hunter
+[submodule "assets/cc-hunter"]
+	path = assets/cc-hunter
 	url = git@github.com:zhuhengtan/cc-hunter.git
-[submodule "assets/hunter-ui"]
-	path = assets/hunter-ui
+[submodule "assets/cc-hunter-ui"]
+	path = assets/cc-hunter-ui
 	url = git@github.com:zhuhengtan/cc-hunter-ui.git

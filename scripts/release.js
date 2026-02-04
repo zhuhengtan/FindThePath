@@ -7,12 +7,12 @@
  *   node scripts/release.js <module> <version> [--type <type>] [--message <message>]
  * 
  * 示例：
- *   node scripts/release.js hunter 1.0.1 --type patch --message "修复存储兼容性问题"
- *   node scripts/release.js hunter-ui 1.1.0 --type minor --message "新增 Loading 组件"
+ *   node scripts/release.js cc-hunter 1.0.1 --type patch --message "修复存储兼容性问题"
+ *   node scripts/release.js cc-hunter-ui 1.1.0 --type minor --message "新增 Loading 组件"
  *   node scripts/release.js main 1.0.1 --type patch --message "更新依赖版本"
  * 
  * 参数：
- *   module   - 模块名称：hunter, hunter-ui, main
+ *   module   - 模块名称：cc-hunter, cc-hunter-ui, main
  *   version  - 新版本号，如 1.0.1
  *   --type   - 变更类型：major, minor, patch (用于 CHANGELOG 分类)
  *   --message - 变更说明
@@ -27,19 +27,19 @@ const PROJECT_ROOT = path.join(__dirname, '..');
 const ASSETS_DIR = path.join(PROJECT_ROOT, 'assets');
 
 const MODULES = {
-  'hunter': {
-    dir: path.join(ASSETS_DIR, 'hunter'),
+  'cc-hunter': {
+    dir: path.join(ASSETS_DIR, 'cc-hunter'),
     name: 'Hunter - 核心工具库',
     remoteName: 'cc-hunter',
   },
-  'hunter-ui': {
-    dir: path.join(ASSETS_DIR, 'hunter-ui'),
+  'cc-hunter-ui': {
+    dir: path.join(ASSETS_DIR, 'cc-hunter-ui'),
     name: 'Hunter-UI - UI 组件库',
     remoteName: 'cc-hunter-ui',
   },
   'main': {
     dir: PROJECT_ROOT,
-    name: '2D Game Template',
+    name: 'FindThePath',
     remoteName: 'real-FindThePath',
     isMain: true,
   },
@@ -50,7 +50,7 @@ function parseArgs() {
   const args = process.argv.slice(2);
   if (args.length < 2) {
     console.error('用法: node scripts/release.js <module> <version> [--type <type>] [--message <message>]');
-    console.error('模块: hunter, hunter-ui, main');
+    console.error('模块: cc-hunter, cc-hunter-ui, main');
     process.exit(1);
   }
 
