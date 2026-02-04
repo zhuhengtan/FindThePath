@@ -1,2 +1,0 @@
-id;title;entryNode@dialogue_node;actors@actor;type;condition
-1;序章;d1_n1;[1];main;story.main==0 and scene=='main' and timing=='Enter'

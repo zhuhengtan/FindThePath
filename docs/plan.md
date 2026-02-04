@@ -131,6 +131,7 @@ MVP 必备信息：
 
 - `seed = hash(level + ":" + generatorVersion)`
 - 云端只要返回 `generatorVersion` 和 `level`，客户端也能生成；或云端直接返回完整关卡数据（便于热修/活动关）
+- 目前采用客户端本地生成的方式，难度随 level 增加而增加
 
 ### 5.2 LevelData（运行时输入）
 

@@ -1,5 +1,5 @@
 import { _decorator, Component, director } from "cc";
-import { ConfigLoader } from "db://assets/hunter/utils/config-loader";
+import { ConfigLoader } from "db://assets/cc-hunter/utils/config-loader";
 
 const { ccclass } = _decorator;
 
@@ -30,6 +30,6 @@ export class Main extends Component {
   update(deltaTime: number) { }
 
   public onClickDemoBtn() {
-    director.loadScene("demo");
+    director.loadScene("game");
   }
 }
