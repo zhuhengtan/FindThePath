@@ -451,7 +451,12 @@ class LevelRunner {
 
 @ccclass("FindThePathGame")
 export class FindThePathGame extends Component {
-  private readonly _cellSize = 96;
+  // 基础格子大小（用于布局计算）
+  private readonly _baseCellSize = 96;
+  // 实际使用的格子大小（会根据屏幕动态调整）
+  private _cellSize = 96;
+  // 最小格子大小（确保触控友好）
+  private readonly _minCellSize = 80;
   private readonly _bundleName = "main-game";
   private readonly _tilePrefabPath = "prefabs/Tile/Tile";
 
@@ -464,8 +469,8 @@ export class FindThePathGame extends Component {
   @property(Label)
   public stepsLabel: Label | null = null;
 
-  @property(Label)
-  public statusLabel: Label | null = null;
+  @property(Node)
+  public finishNode: Node | null = null;
 
   @property
   public carSpeed: number = 180;
@@ -482,6 +487,7 @@ export class FindThePathGame extends Component {
   private _goalLabel: Node | null = null;
   private _isLevelFinished: boolean = false;
   private readonly _storageKey = "FindThePath_CurrentLevel";
+  private readonly _levelDataKey = "FindThePath_LevelData";
 
   private _exit: (() => void) | null = null;
 
@@ -520,14 +526,23 @@ export class FindThePathGame extends Component {
       }
     }
 
-    this._levelGenerator = new LevelGenerator({
-      canvasWidth,
-      canvasHeight,
-      cellSize: this._cellSize,
-      level: this._levelNumber,
-    });
+    // 尝试从本地加载已保存的关卡数据
+    let level = this.loadSavedLevelData();
 
-    const level = this._levelGenerator.generate();
+    if (!level || level.level !== this._levelNumber) {
+      // 没有保存的关卡数据或关卡号不匹配，生成新关卡
+      this._levelGenerator = new LevelGenerator({
+        canvasWidth,
+        canvasHeight,
+        cellSize: this._cellSize,
+        level: this._levelNumber,
+      });
+
+      level = this._levelGenerator.generate();
+      // 保存生成的关卡数据到本地
+      this.saveLevelData(level);
+    }
+
     this._levelNumber = level.level;
     this._runner = new LevelRunner(level, this._cellSize, this.carSpeed);
 
@@ -544,8 +559,29 @@ export class FindThePathGame extends Component {
 
     this.refreshCar();
     this.refreshTilesOccupied();
-    this.createEndPoints(level);
+    this.updateFinishNodePosition(level);
     this.refreshHud();
+  }
+
+  /**
+   * 保存关卡数据到本地存储
+   */
+  private saveLevelData(level: LevelData): void {
+    StorageManager.setItem(this._levelDataKey, level);
+  }
+
+  /**
+   * 从本地存储加载关卡数据
+   */
+  private loadSavedLevelData(): LevelData | null {
+    return StorageManager.getItem<LevelData>(this._levelDataKey, null);
+  }
+
+  /**
+   * 清除保存的关卡数据
+   */
+  private clearSavedLevelData(): void {
+    StorageManager.removeItem(this._levelDataKey);
   }
 
   protected update(dt: number): void {
@@ -563,6 +599,9 @@ export class FindThePathGame extends Component {
 
   private handleLevelWin(): void {
     const nextLevel = this._levelNumber + 1;
+    // 清除当前关卡的保存数据
+    this.clearSavedLevelData();
+    // 保存下一关的关卡号
     StorageManager.setItem(this._storageKey, nextLevel);
     showToast("通关成功！", 1.5, () => {
       this._levelNumber = nextLevel;
@@ -650,39 +689,38 @@ export class FindThePathGame extends Component {
     }
   }
 
-  private createEndPoints(level: LevelData): void {
-    if (!this.gridRoot) return;
+  /**
+   * 设置终点节点位置
+   */
+  private updateFinishNodePosition(level: LevelData): void {
+    if (!this.finishNode || !this.gridRoot) return;
 
-    const createPoint = (name: string, color: Color, x: number, y: number, dir: Direction) => {
-      const node = new Node(name);
-      node.parent = this.gridRoot!;
+    const dir = level.goal.dir;
+    const vec = dirVec(dir);
+    const offsetDist = this._cellSize * 1.0;
 
-      const gfx = node.addComponent(Graphics);
-      gfx.fillColor = color;
+    const origin = new Vec3(0, 0, 0);
+    const cx = origin.x + (level.goal.x - (level.width - 1) / 2) * this._cellSize;
+    const cy = origin.y + (level.goal.y - (level.height - 1) / 2) * this._cellSize;
 
-      const offsetDist = this._cellSize * 1.5;
-      const vec = dirVec(dir);
+    const px = cx + vec.x * offsetDist;
+    const py = cy + vec.y * offsetDist;
 
-      const origin = new Vec3(0, 0, 0);
-      const cx = origin.x + (x - (level.width - 1) / 2) * this._cellSize;
-      const cy = origin.y + (y - (level.height - 1) / 2) * this._cellSize;
+    // 如果 finishNode 是 gridRoot 的子节点，直接设置位置
+    if (this.finishNode.parent === this.gridRoot) {
+      this.finishNode.setPosition(px, py, 0);
+    } else {
+      // 否则需要转换到世界坐标
+      const gridUi = this.gridRoot.getComponent(UITransform);
+      if (gridUi) {
+        const localPos = new Vec3(px, py, 0);
+        const worldPos = gridUi.convertToWorldSpaceAR(localPos);
+        this.finishNode.setWorldPosition(worldPos);
+        this.finishNode.setScale(this._gridScale, this._gridScale, 1);
+      }
+    }
 
-      const px = cx + vec.x * offsetDist;
-      const py = cy + vec.y * offsetDist;
-
-      node.setPosition(px, py, 0);
-
-      // Draw visuals (a simple circle)
-      gfx.circle(0, 0, this._cellSize * 0.4);
-      gfx.fill();
-    };
-
-    // Start Point: Entrance of start tile
-    const startEntryDir = oppositeDir(level.start.dir);
-    createPoint("StartPoint", new Color(80, 120, 200, 255), level.start.x, level.start.y, startEntryDir);
-
-    // Goal Point: Exit of goal tile
-    createPoint("GoalPoint", new Color(60, 180, 60, 255), level.goal.x, level.goal.y, level.goal.dir);
+    this.finishNode.active = true;
   }
 
   private refreshCar(): void {
@@ -716,15 +754,6 @@ export class FindThePathGame extends Component {
     if (this.stepsLabel) {
       this.stepsLabel.string = `关卡：${this._levelNumber}  步数：${this._runner.stepsLeft}`;
     }
-    if (this.statusLabel) {
-      if (statusOverride) {
-        this.statusLabel.string = statusOverride;
-        return;
-      }
-      if (this._runner.isWin) this.statusLabel.string = "通关";
-      else if (this._runner.isFail) this.statusLabel.string = "失败";
-      else this.statusLabel.string = "";
-    }
   }
 
   private refreshTilesOccupied(): void {
@@ -745,28 +774,34 @@ export class FindThePathGame extends Component {
   private calculateAndApplyScale(level: LevelData, canvasWidth: number, canvasHeight: number): void {
     if (!this.gridRoot) return;
 
-    // Calculate the total size needed for the grid
-    const gridWidth = level.width * this._cellSize;
-    const gridHeight = level.height * this._cellSize;
+    // 计算基于基础格子大小的网格尺寸
+    const baseGridWidth = level.width * this._baseCellSize;
+    const baseGridHeight = level.height * this._baseCellSize;
 
-    // Add some padding (10% on each side)
-    const padding = 0.9;
+    // 增加可用空间比例（使用85%的屏幕空间）
+    const padding = 0.85;
     const availableWidth = canvasWidth * padding;
     const availableHeight = canvasHeight * padding;
 
-    // Calculate scale to fit
-    const scaleX = availableWidth / gridWidth;
-    const scaleY = availableHeight / gridHeight;
+    // 计算缩放比例以适应屏幕
+    const scaleX = availableWidth / baseGridWidth;
+    const scaleY = availableHeight / baseGridHeight;
     let scale = Math.min(scaleX, scaleY);
 
-    // Apply minimum scale limit to ensure clickability
-    const minScale = 0.5;
-    scale = Math.max(minScale, scale);
+    // 计算实际格子大小
+    const actualCellSize = this._baseCellSize * scale;
 
-    // Clamp to max scale of 1 (don't upscale)
-    scale = Math.min(1, scale);
+    // 确保格子不会太小（触控友好）
+    if (actualCellSize < this._minCellSize) {
+      scale = this._minCellSize / this._baseCellSize;
+    }
+
+    // 允许适度放大以填满屏幕（最大放大2倍）
+    const maxScale = 2.0;
+    scale = Math.min(maxScale, scale);
 
     this._gridScale = scale;
+    this._cellSize = this._baseCellSize; // 保持基础格子大小，通过缩放实现
 
     // Apply scale to gridRoot
     this.gridRoot.setScale(scale, scale, 1);

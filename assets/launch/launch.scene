@@ -188,7 +188,7 @@
     "_priority": 0,
     "_fov": 45,
     "_fovAxis": 0,
-    "_orthoHeight": 413.47547974413646,
+    "_orthoHeight": 409.9788583509514,
     "_near": 0,
     "_far": 2000,
     "_color": {
@@ -422,8 +422,8 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 359.98975546375266,
-      "height": 151.2
+      "width": 479.9864561310782,
+      "height": 151.20000000000002
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -452,10 +452,10 @@
       "b": 255,
       "a": 255
     },
-    "_string": "游戏名",
+    "_string": "开到终点",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 175.875,
+    "_actualFontSize": 177.375,
     "_fontSize": 120,
     "_fontFamily": "Arial",
     "_lineHeight": 120,
@@ -573,7 +573,7 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": -45.92187315394611,
+      "x": -45.92186570923627,
       "y": 0,
       "z": 0
     },
@@ -612,7 +612,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 122.67185625999467,
+      "width": 122.67183783694504,
       "height": 50.400000000000006
     },
     "_anchorPoint": {
@@ -645,7 +645,7 @@
     "_string": "加载中...",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 46.9,
+    "_actualFontSize": 47.3,
     "_fontSize": 32,
     "_fontFamily": "Arial",
     "_lineHeight": 40,
@@ -705,7 +705,7 @@
     "_prefab": null,
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": 66.33592812999734,
+      "x": 66.33591891847252,
       "y": 0,
       "z": 0
     },
@@ -744,8 +744,8 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 81.84374630789225,
-      "height": 50.4
+      "width": 81.84373141847252,
+      "height": 50.400000000000006
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -777,7 +777,7 @@
     "_string": "100%",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 46.9,
+    "_actualFontSize": 47.3,
     "_fontSize": 32,
     "_fontFamily": "Arial",
     "_lineHeight": 40,
@@ -828,7 +828,7 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 214.5156025678869,
+      "width": 214.51556925541757,
       "height": 50
     },
     "_anchorPoint": {

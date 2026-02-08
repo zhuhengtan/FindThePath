@@ -17,6 +17,14 @@ enum Direction {
 
 type TileType = "I" | "L" | "T" | "X";
 
+/**
+ * 难度等级
+ * - easy: 普通关卡
+ * - medium: 每5关的中等难度关卡
+ * - hard: 每10关的特别难关卡
+ */
+type Difficulty = "easy" | "medium" | "hard";
+
 interface PathNode {
   x: number;
   y: number;
@@ -30,12 +38,14 @@ export class LevelGenerator {
   private _grid: boolean[][] = [];
   private _path: PathNode[] = [];
   private _correctRotations: Map<string, number> = new Map();
+  private _difficulty: Difficulty = "easy";
 
   constructor(config: GeneratorConfig) {
     this._config = config;
   }
 
   public generate(): LevelData {
+    this._difficulty = this.calculateDifficulty();
     this.calculateGridSize();
     this.initializeGrid();
     this.generatePath();
@@ -92,10 +102,42 @@ export class LevelGenerator {
     };
   }
 
+  /**
+   * 根据关卡号计算难度
+   * - 每10关: hard（特别难）
+   * - 每5关（非10的倍数）: medium（中等难度）
+   * - 其他: easy（普通）
+   */
+  private calculateDifficulty(): Difficulty {
+    const level = this._config.level;
+    if (level % 10 === 0) return "hard";
+    if (level % 5 === 0) return "medium";
+    return "easy";
+  }
+
   private calculateGridSize(): void {
     const tier = Math.floor((this._config.level - 1) / 100);
-    const minCells = 3 + tier;
-    const maxCells = 4 + tier * 2;
+
+    // 根据难度调整格子大小
+    let minCells: number;
+    let maxCells: number;
+
+    switch (this._difficulty) {
+      case "hard":
+        // 特别难：更大的地图
+        minCells = 4 + tier;
+        maxCells = 6 + tier * 2;
+        break;
+      case "medium":
+        // 中等难度：稍大的地图
+        minCells = 3 + tier;
+        maxCells = 5 + tier * 2;
+        break;
+      default:
+        // 普通难度
+        minCells = 3 + tier;
+        maxCells = 4 + tier * 2;
+    }
 
     const maxWidth = Math.floor(this._config.canvasWidth / this._config.cellSize);
     const maxHeight = Math.floor(this._config.canvasHeight / this._config.cellSize);
@@ -153,7 +195,19 @@ export class LevelGenerator {
 
     // Generate path with random walk
     // We want the goal to be at the edge of the map so the car can "exit" the map.
-    const minPathLength = Math.floor(this._width * this._height * 0.4);
+    // 根据难度调整最小路径长度比例
+    let pathRatio: number;
+    switch (this._difficulty) {
+      case "hard":
+        pathRatio = 0.6; // 特别难：更长的路径
+        break;
+      case "medium":
+        pathRatio = 0.5; // 中等难度：较长路径
+        break;
+      default:
+        pathRatio = 0.4; // 普通难度
+    }
+    const minPathLength = Math.floor(this._width * this._height * pathRatio);
     let attempts = 0;
     const maxAttempts = 200; // Increased attempts
 
@@ -319,7 +373,24 @@ export class LevelGenerator {
 
   private addObfuscation(tiles: Array<{ x: number; y: number; type: TileType; rot: number }>): void {
     const tier = Math.floor((this._config.level - 1) / 100);
-    const obfuscationRatio = Math.min(0.3 + tier * 0.1, 0.6);
+
+    // 根据难度调整干扰格子比例
+    let baseRatio: number;
+    let maxRatio: number;
+    switch (this._difficulty) {
+      case "hard":
+        baseRatio = 0.5; // 特别难：更多干扰
+        maxRatio = 0.8;
+        break;
+      case "medium":
+        baseRatio = 0.4; // 中等难度：较多干扰
+        maxRatio = 0.7;
+        break;
+      default:
+        baseRatio = 0.3; // 普通难度
+        maxRatio = 0.6;
+    }
+    const obfuscationRatio = Math.min(baseRatio + tier * 0.1, maxRatio);
 
     const emptyCount = this._width * this._height - tiles.length;
     const toFill = Math.floor(emptyCount * obfuscationRatio);
@@ -364,7 +435,19 @@ export class LevelGenerator {
       return this._correctRotations.has(key);
     });
 
-    const shuffleCount = Math.max(3, Math.floor(toShuffle.length * 0.8)); // Increased ratio slightly
+    // 根据难度调整打乱比例
+    let shuffleRatio: number;
+    switch (this._difficulty) {
+      case "hard":
+        shuffleRatio = 0.95; // 特别难：几乎全部打乱
+        break;
+      case "medium":
+        shuffleRatio = 0.9; // 中等难度：大部分打乱
+        break;
+      default:
+        shuffleRatio = 0.8; // 普通难度
+    }
+    const shuffleCount = Math.max(3, Math.floor(toShuffle.length * shuffleRatio));
 
     // Shuffle subset (avoiding duplicates in random pick)
     // Create a pool of indices
@@ -399,7 +482,24 @@ export class LevelGenerator {
         minSteps += stepsNeeded;
       }
     }
-    return Math.max(1, Math.ceil(minSteps * 1.5) + 3);
+
+    // 根据难度调整步数余量
+    let stepMultiplier: number;
+    let bonusSteps: number;
+    switch (this._difficulty) {
+      case "hard":
+        stepMultiplier = 1.2; // 特别难：步数余量更少
+        bonusSteps = 1;
+        break;
+      case "medium":
+        stepMultiplier = 1.3; // 中等难度：步数余量较少
+        bonusSteps = 2;
+        break;
+      default:
+        stepMultiplier = 1.5; // 普通难度：步数余量较多
+        bonusSteps = 3;
+    }
+    return Math.max(1, Math.ceil(minSteps * stepMultiplier) + bonusSteps);
   }
 
   private moveInDirection(x: number, y: number, dir: Direction): { x: number; y: number } {
