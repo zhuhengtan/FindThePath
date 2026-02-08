@@ -13,6 +13,8 @@ import {
 } from "cc";
 import { Tile, TileType as TileVisualType } from "db://assets/main-game/prefabs/Tile/Tile";
 import { LevelGenerator } from "./LevelGenerator";
+import { showToast } from "db://assets/cc-hunter-ui/Toast/ToastManager";
+import { StorageManager } from "db://assets/cc-hunter/utils/storage";
 
 const { ccclass, property } = _decorator;
 
@@ -244,6 +246,7 @@ class LevelRunner {
   public get startX() { return this._startX; }
   public get startY() { return this._startY; }
   public getCarCell() { return { x: this._car.gridX, y: this._car.gridY }; }
+  public get isCarStopped() { return this._car.state === "STOPPED"; }
 
   public isTileOccupied(x: number, y: number): boolean {
     return Math.round(this._car.x) === x && Math.round(this._car.y) === y;
@@ -477,6 +480,8 @@ export class FindThePathGame extends Component {
   private _gridScale: number = 1;
   private _startLabel: Node | null = null;
   private _goalLabel: Node | null = null;
+  private _isLevelFinished: boolean = false;
+  private readonly _storageKey = "FindThePath_CurrentLevel";
 
   private _exit: (() => void) | null = null;
 
@@ -485,6 +490,8 @@ export class FindThePathGame extends Component {
   }
 
   protected onLoad(): void {
+    const savedLevel = StorageManager.getItem<number>(this._storageKey, 1);
+    this._levelNumber = savedLevel;
     void this.initLevel();
   }
 
@@ -497,6 +504,7 @@ export class FindThePathGame extends Component {
   }
 
   private async initLevel(): Promise<void> {
+    this._isLevelFinished = false;
     this._tileNodes = [];
     this._tileComps = [];
     this._tileOccupiedCache = [];
@@ -546,6 +554,20 @@ export class FindThePathGame extends Component {
     this.refreshCar();
     this.refreshTilesOccupied();
     this.refreshHud();
+
+    if (this._runner.isWin && this._runner.isCarStopped && !this._isLevelFinished) {
+      this._isLevelFinished = true;
+      this.handleLevelWin();
+    }
+  }
+
+  private handleLevelWin(): void {
+    const nextLevel = this._levelNumber + 1;
+    StorageManager.setItem(this._storageKey, nextLevel);
+    showToast("通关成功！", 1.5, () => {
+      this._levelNumber = nextLevel;
+      void this.initLevel();
+    });
   }
 
   public restart(): void {
