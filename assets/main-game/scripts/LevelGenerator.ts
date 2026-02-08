@@ -160,42 +160,63 @@ export class LevelGenerator {
     }
   }
 
+  private isEdge(x: number, y: number): boolean {
+    return x === 0 || x === this._width - 1 || y === 0 || y === this._height - 1;
+  }
+
+  private distanceToNearestEdge(x: number, y: number): number {
+    return Math.min(x, this._width - 1 - x, y, this._height - 1 - y);
+  }
+
+  private buildFallbackPath(minPathLength: number): void {
+    this.initializeGrid();
+    this._path = [];
+
+    const route: Array<{ x: number; y: number }> = [];
+    for (let y = 0; y < this._height; y++) {
+      if (y % 2 === 0) {
+        for (let x = 0; x < this._width; x++) route.push({ x, y });
+      } else {
+        for (let x = this._width - 1; x >= 0; x--) route.push({ x, y });
+      }
+    }
+
+    const targetLen = Math.max(2, Math.min(minPathLength, route.length));
+    let endIndex = targetLen - 1;
+    while (endIndex < route.length - 1 && !this.isEdge(route[endIndex].x, route[endIndex].y)) {
+      endIndex++;
+    }
+
+    for (let i = 0; i <= endIndex; i++) {
+      const cur = route[i];
+      if (i === 0) {
+        const next = route[1];
+        let startDir = Direction.Up;
+        if (next.x > cur.x) startDir = Direction.Right;
+        else if (next.x < cur.x) startDir = Direction.Left;
+        else if (next.y > cur.y) startDir = Direction.Up;
+        else startDir = Direction.Down;
+
+        this._path.push({ x: cur.x, y: cur.y, fromDir: this.oppositeDir(startDir) });
+        this._grid[cur.y][cur.x] = true;
+        continue;
+      }
+
+      const prev = route[i - 1];
+      let dir = Direction.Up;
+      if (cur.x > prev.x) dir = Direction.Right;
+      else if (cur.x < prev.x) dir = Direction.Left;
+      else if (cur.y > prev.y) dir = Direction.Up;
+      else dir = Direction.Down;
+
+      this._path.push({ x: cur.x, y: cur.y, fromDir: this.oppositeDir(dir) });
+      this._grid[cur.y][cur.x] = true;
+    }
+  }
+
   private generatePath(): void {
     this._path = [];
 
-    // Start from random edge position
-    const startEdge = Math.floor(Math.random() * 4);
-    let startX = 0, startY = 0, startDir = Direction.Up;
-
-    switch (startEdge) {
-      case 0: // Top
-        startX = Math.floor(Math.random() * this._width);
-        startY = this._height - 1;
-        startDir = Direction.Down;
-        break;
-      case 1: // Right
-        startX = this._width - 1;
-        startY = Math.floor(Math.random() * this._height);
-        startDir = Direction.Left;
-        break;
-      case 2: // Bottom
-        startX = Math.floor(Math.random() * this._width);
-        startY = 0;
-        startDir = Direction.Up;
-        break;
-      case 3: // Left
-        startX = 0;
-        startY = Math.floor(Math.random() * this._height);
-        startDir = Direction.Right;
-        break;
-    }
-
-    this._path.push({ x: startX, y: startY, fromDir: this.oppositeDir(startDir) });
-    this._grid[startY][startX] = true;
-
-    // Generate path with random walk
-    // We want the goal to be at the edge of the map so the car can "exit" the map.
-    // 根据难度调整最小路径长度比例
     let pathRatio: number;
     switch (this._difficulty) {
       case "hard":
@@ -208,68 +229,113 @@ export class LevelGenerator {
         pathRatio = 0.4; // 普通难度
     }
     const minPathLength = Math.floor(this._width * this._height * pathRatio);
-    let attempts = 0;
-    const maxAttempts = 200; // Increased attempts
 
-    while (attempts < maxAttempts) {
-      const current = this._path[this._path.length - 1];
+    const maxAttempts = 260;
+    const maxRestarts = 60;
 
-      // Stop condition: Path is long enough AND we are at an edge (but not the start edge ideally)
-      // Note: simple edge check.
-      const isAtEdge = current.x === 0 || current.x === this._width - 1 || current.y === 0 || current.y === this._height - 1;
+    for (let restart = 0; restart < maxRestarts; restart++) {
+      this.initializeGrid();
+      this._path = [];
 
-      if (this._path.length >= minPathLength && isAtEdge) {
-        // Success!
-        break;
+      const startEdge = Math.floor(Math.random() * 4);
+      let startX = 0, startY = 0, startDir = Direction.Up;
+
+      switch (startEdge) {
+        case 0: // Top
+          startX = Math.floor(Math.random() * this._width);
+          startY = this._height - 1;
+          startDir = Direction.Down;
+          break;
+        case 1: // Right
+          startX = this._width - 1;
+          startY = Math.floor(Math.random() * this._height);
+          startDir = Direction.Left;
+          break;
+        case 2: // Bottom
+          startX = Math.floor(Math.random() * this._width);
+          startY = 0;
+          startDir = Direction.Up;
+          break;
+        case 3: // Left
+          startX = 0;
+          startY = Math.floor(Math.random() * this._height);
+          startDir = Direction.Right;
+          break;
       }
 
-      let possibleDirs: Direction[];
+      this._path.push({ x: startX, y: startY, fromDir: this.oppositeDir(startDir) });
+      this._grid[startY][startX] = true;
 
-      // Force first step to be inwards (perpendicular to edge) 
-      // to ensure Start Point is outside the map.
-      if (this._path.length === 1) {
-        // current.fromDir is where we came from (Outwards).
-        // We want to go Inwards -> Opposite of Outwards.
-        const inwardDir = this.oppositeDir(current.fromDir);
-        possibleDirs = [inwardDir];
+      let attempts = 0;
 
-        // Verify (should always be valid at start)
-        const { x: nx, y: ny } = this.moveInDirection(current.x, current.y, inwardDir);
-        if (nx < 0 || nx >= this._width || ny < 0 || ny >= this._height) {
-          // Fallback if map is 1x1? Unlikely.
-          possibleDirs = this.getPossibleDirections(current);
+      while (attempts < maxAttempts) {
+        const current = this._path[this._path.length - 1];
+
+        if (this._path.length >= minPathLength && this.isEdge(current.x, current.y)) {
+          break;
         }
-      } else {
-        possibleDirs = this.getPossibleDirections(current);
-      }
 
-      if (possibleDirs.length === 0) {
-        // Stuck. Backtrack or restart.
-        if (this._path.length > 5) {
-          // Backtrack a few steps
-          const removeCount = Math.floor(this._path.length / 2);
-          for (let k = 0; k < removeCount; k++) {
-            const p = this._path.pop();
-            if (p) this._grid[p.y][p.x] = false;
+        let possibleDirs: Direction[];
+
+        if (this._path.length === 1) {
+          const inwardDir = this.oppositeDir(current.fromDir);
+          possibleDirs = [inwardDir];
+
+          const { x: nx, y: ny } = this.moveInDirection(current.x, current.y, inwardDir);
+          if (nx < 0 || nx >= this._width || ny < 0 || ny >= this._height) {
+            possibleDirs = this.getPossibleDirections(current);
           }
         } else {
-          // Restart
-          this.initializeGrid();
-          this._path = [];
-          this._path.push({ x: startX, y: startY, fromDir: this.oppositeDir(startDir) });
-          this._grid[startY][startX] = true;
+          possibleDirs = this.getPossibleDirections(current);
         }
+
+        if (possibleDirs.length === 0) {
+          if (this._path.length > 5) {
+            const removeCount = Math.floor(this._path.length / 2);
+            for (let k = 0; k < removeCount; k++) {
+              const p = this._path.pop();
+              if (p) this._grid[p.y][p.x] = false;
+            }
+          } else {
+            break;
+          }
+          attempts++;
+          continue;
+        }
+
+        if (this._path.length >= minPathLength) {
+          let bestDist = Number.POSITIVE_INFINITY;
+          let bestDirs: Direction[] = [];
+
+          for (const dir of possibleDirs) {
+            const { x: nx, y: ny } = this.moveInDirection(current.x, current.y, dir);
+            const d = this.distanceToNearestEdge(nx, ny);
+            if (d < bestDist) {
+              bestDist = d;
+              bestDirs = [dir];
+            } else if (d === bestDist) {
+              bestDirs.push(dir);
+            }
+          }
+
+          if (bestDirs.length > 0) possibleDirs = bestDirs;
+        }
+
+        const dir = possibleDirs[Math.floor(Math.random() * possibleDirs.length)];
+        const { x: nextX, y: nextY } = this.moveInDirection(current.x, current.y, dir);
+
+        this._path.push({ x: nextX, y: nextY, fromDir: this.oppositeDir(dir) });
+        this._grid[nextY][nextX] = true;
         attempts++;
-        continue;
       }
 
-
-      const dir = possibleDirs[Math.floor(Math.random() * possibleDirs.length)];
-      const { x: nextX, y: nextY } = this.moveInDirection(current.x, current.y, dir);
-
-      this._path.push({ x: nextX, y: nextY, fromDir: this.oppositeDir(dir) });
-      this._grid[nextY][nextX] = true;
+      const goal = this._path[this._path.length - 1];
+      if (this._path.length >= 2 && this._path.length >= minPathLength && this.isEdge(goal.x, goal.y)) {
+        return;
+      }
     }
+
+    this.buildFallbackPath(minPathLength);
   }
 
   private getPossibleDirections(node: PathNode): Direction[] {

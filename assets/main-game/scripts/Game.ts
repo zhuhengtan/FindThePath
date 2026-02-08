@@ -495,15 +495,53 @@ export class FindThePathGame extends Component {
   private _cachedCanvasWidth: number = 0;
   private _cachedCanvasHeight: number = 0;
 
+  private _tileVisualSize: number = 100;
+  private _carBaseScale: Vec3 | null = null;
+  private _finishBaseScale: Vec3 | null = null;
+
   private _exit: (() => void) | null = null;
 
   public setExit(cb: () => void): void {
     this._exit = cb;
   }
 
+  private ensureCarBaseScale(): void {
+    if (this._carBaseScale) return;
+    if (!this.carNode) return;
+    const s = this.carNode.getScale();
+    this._carBaseScale = new Vec3(s.x, s.y, s.z);
+  }
+
+  private ensureFinishBaseScale(): void {
+    if (this._finishBaseScale) return;
+    if (!this.finishNode) return;
+    const s = this.finishNode.getScale();
+    this._finishBaseScale = new Vec3(s.x, s.y, s.z);
+  }
+
+  private applyCarScaleByTileVisualSize(tileVisualSize: number): void {
+    this.ensureCarBaseScale();
+    if (!this.carNode || !this._carBaseScale) return;
+    if (!Number.isFinite(tileVisualSize) || tileVisualSize <= 0) return;
+
+    const ratio = this._cellSize / tileVisualSize;
+    this.carNode.setScale(this._carBaseScale.x * ratio, this._carBaseScale.y * ratio, this._carBaseScale.z);
+  }
+
+  private applyFinishScaleByTileVisualSize(tileVisualSize: number): void {
+    this.ensureFinishBaseScale();
+    if (!this.finishNode || !this._finishBaseScale) return;
+    if (!Number.isFinite(tileVisualSize) || tileVisualSize <= 0) return;
+
+    const ratio = this._cellSize / tileVisualSize;
+    this.finishNode.setScale(this._finishBaseScale.x * ratio, this._finishBaseScale.y * ratio, this._finishBaseScale.z);
+  }
+
   protected onLoad(): void {
     const savedLevel = StorageManager.getItem<number>(this._storageKey, 1);
     this._levelNumber = savedLevel;
+    this.ensureCarBaseScale();
+    this.ensureFinishBaseScale();
   }
 
   protected start(): void {
@@ -635,13 +673,26 @@ export class FindThePathGame extends Component {
 
     this.gridRoot.destroyAllChildren();
 
+    let tileVisualSize = 100;
+    {
+      const probe = instantiate(this._tilePrefab);
+      const probeUi = probe.getComponent(UITransform);
+      const probeScale = probe.getScale();
+      if (probeUi) {
+        const w = probeUi.width * probeScale.x;
+        const h = probeUi.height * probeScale.y;
+        const m = Math.max(w, h);
+        if (Number.isFinite(m) && m > 0) tileVisualSize = m;
+      }
+      probe.destroy();
+    }
+    this._tileVisualSize = tileVisualSize;
+
     // 配置 Layout 组件
     const layout = this.gridRoot.getComponent(Layout);
     if (layout) {
       // 设置列数为关卡宽度
-      console.log(`[Grid] Setting constraintNum from ${layout.constraintNum} to ${level.width}`);
       layout.constraintNum = level.width;
-      console.log(`[Grid] After set, constraintNum = ${layout.constraintNum}`);
 
       // 获取 gridRoot 自身的尺寸（Widget 已经设置好了）
       const gridTransform = this.gridRoot.getComponent(UITransform);
@@ -655,10 +706,31 @@ export class FindThePathGame extends Component {
         const optimalCellSize = Math.floor(Math.min(cellWidth, cellHeight));
 
         // 确保最小触控尺寸
-        const finalCellSize = Math.max(80, optimalCellSize);
+        const finalCellSize = Math.max(this._minCellSize, optimalCellSize);
 
         layout.cellSize = new Size(finalCellSize, finalCellSize);
         this._cellSize = finalCellSize;
+
+        this.applyCarScaleByTileVisualSize(tileVisualSize);
+        this.applyFinishScaleByTileVisualSize(tileVisualSize);
+
+        const spacingX = layout.spacingX ?? 0;
+        const spacingY = layout.spacingY ?? 0;
+        const contentWidth = finalCellSize * level.width + spacingX * Math.max(0, level.width - 1);
+        const contentHeight = finalCellSize * level.height + spacingY * Math.max(0, level.height - 1);
+
+        const remainWidth = Math.max(0, availableWidth - contentWidth);
+        const remainHeight = Math.max(0, availableHeight - contentHeight);
+
+        const paddingLeft = Math.floor(remainWidth / 2);
+        const paddingRight = Math.floor(remainWidth - paddingLeft);
+        const paddingBottom = Math.floor(remainHeight / 2);
+        const paddingTop = Math.floor(remainHeight - paddingBottom);
+
+        layout.paddingLeft = paddingLeft;
+        layout.paddingRight = paddingRight;
+        layout.paddingTop = paddingTop;
+        layout.paddingBottom = paddingBottom;
 
         console.log(`[Grid] gridRoot: ${gridTransform.width}x${gridTransform.height}, grid: ${level.width}x${level.height}, cellSize: ${finalCellSize}, constraintNum: ${layout.constraintNum}`);
       }
@@ -743,8 +815,18 @@ export class FindThePathGame extends Component {
 
     const dir = level.goal.dir;
     const vec = dirVec(dir);
-    // 终点更贴近格子边缘
-    const offsetDist = this._cellSize * 0.55;
+    this.applyFinishScaleByTileVisualSize(this._tileVisualSize);
+    this.finishNode.angle = -dir * 90;
+
+    let finishDepth = this._cellSize;
+    const finishUi = this.finishNode.getComponent(UITransform);
+    if (finishUi) {
+      const s = this.finishNode.getScale();
+      const w = finishUi.width * s.x;
+      const h = finishUi.height * s.y;
+      finishDepth = (dir === Direction.Up || dir === Direction.Down) ? h : w;
+    }
+    const offsetDist = this._cellSize * 0.5 + finishDepth * 0.5;
 
     // 基于目标格子的实际位置计算终点位置
     const tilePos = goalTileNode.getPosition();
