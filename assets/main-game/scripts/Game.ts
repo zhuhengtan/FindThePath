@@ -1,13 +1,13 @@
 import {
   _decorator,
   assetManager,
-  Color,
   Component,
-  Graphics,
   instantiate,
   Label,
+  Layout,
   Node,
   Prefab,
+  Size,
   UITransform,
   Vec3,
 } from "cc";
@@ -245,6 +245,9 @@ class LevelRunner {
   public get goalY() { return this._goalY; }
   public get startX() { return this._startX; }
   public get startY() { return this._startY; }
+  public get carX() { return this._car.x; }
+  public get carY() { return this._car.y; }
+  public get carAngle() { return normalizeAngle(-this._car.moveDir * 90); }
   public getCarCell() { return { x: this._car.gridX, y: this._car.gridY }; }
   public get isCarStopped() { return this._car.state === "STOPPED"; }
 
@@ -488,6 +491,9 @@ export class FindThePathGame extends Component {
   private _isLevelFinished: boolean = false;
   private readonly _storageKey = "FindThePath_CurrentLevel";
   private readonly _levelDataKey = "FindThePath_LevelData";
+  // 缓存画布尺寸，确保一致性
+  private _cachedCanvasWidth: number = 0;
+  private _cachedCanvasHeight: number = 0;
 
   private _exit: (() => void) | null = null;
 
@@ -498,7 +504,13 @@ export class FindThePathGame extends Component {
   protected onLoad(): void {
     const savedLevel = StorageManager.getItem<number>(this._storageKey, 1);
     this._levelNumber = savedLevel;
-    void this.initLevel();
+  }
+
+  protected start(): void {
+    // 延迟一帧初始化，确保 Widget 完全更新了 gridRoot 的尺寸
+    this.scheduleOnce(() => {
+      void this.initLevel();
+    }, 0);
   }
 
   public onClickRestart(): void {
@@ -515,16 +527,20 @@ export class FindThePathGame extends Component {
     this._tileComps = [];
     this._tileOccupiedCache = [];
 
-    // Get actual canvas size from gridRoot
-    let canvasWidth = 800;
-    let canvasHeight = 600;
-    if (this.gridRoot) {
-      const uiTransform = this.gridRoot.getComponent(UITransform);
-      if (uiTransform) {
-        canvasWidth = uiTransform.width || canvasWidth;
-        canvasHeight = uiTransform.height || canvasHeight;
+    // Get actual canvas size from gridRoot (only on first init)
+    if (this._cachedCanvasWidth === 0 || this._cachedCanvasHeight === 0) {
+      if (this.gridRoot) {
+        const uiTransform = this.gridRoot.getComponent(UITransform);
+        if (uiTransform) {
+          this._cachedCanvasWidth = uiTransform.width || 800;
+          this._cachedCanvasHeight = uiTransform.height || 600;
+        }
       }
+      if (this._cachedCanvasWidth === 0) this._cachedCanvasWidth = 800;
+      if (this._cachedCanvasHeight === 0) this._cachedCanvasHeight = 600;
     }
+    const canvasWidth = this._cachedCanvasWidth;
+    const canvasHeight = this._cachedCanvasHeight;
 
     // 尝试从本地加载已保存的关卡数据
     let level = this.loadSavedLevelData();
@@ -554,8 +570,9 @@ export class FindThePathGame extends Component {
 
     this.buildGrid(level);
 
-    // Calculate and apply scale to fit grid in viewport
-    this.calculateAndApplyScale(level, canvasWidth, canvasHeight);
+    // 重置 gridRoot 缩放（Layout 已经处理了尺寸）
+    this.gridRoot?.setScale(1, 1, 1);
+    this._gridScale = 1;
 
     this.refreshCar();
     this.refreshTilesOccupied();
@@ -614,29 +631,48 @@ export class FindThePathGame extends Component {
   }
 
   private buildGrid(level: LevelData): void {
-    if (!this._runner || !this._tilePrefab) return;
-
-    if (!this.gridRoot) {
-      this.gridRoot = new Node("GridRoot");
-      this.gridRoot.parent = this.node;
-    }
+    if (!this._runner || !this._tilePrefab || !this.gridRoot) return;
 
     this.gridRoot.destroyAllChildren();
 
-    const origin = new Vec3(0, 0, 0);
+    // 配置 Layout 组件
+    const layout = this.gridRoot.getComponent(Layout);
+    if (layout) {
+      // 设置列数为关卡宽度
+      console.log(`[Grid] Setting constraintNum from ${layout.constraintNum} to ${level.width}`);
+      layout.constraintNum = level.width;
+      console.log(`[Grid] After set, constraintNum = ${layout.constraintNum}`);
 
-    for (let y = 0; y < level.height; y++) {
+      // 获取 gridRoot 自身的尺寸（Widget 已经设置好了）
+      const gridTransform = this.gridRoot.getComponent(UITransform);
+      if (gridTransform) {
+        const availableWidth = gridTransform.width;
+        const availableHeight = gridTransform.height;
+
+        // 计算每个格子的最优尺寸
+        const cellWidth = availableWidth / level.width;
+        const cellHeight = availableHeight / level.height;
+        const optimalCellSize = Math.floor(Math.min(cellWidth, cellHeight));
+
+        // 确保最小触控尺寸
+        const finalCellSize = Math.max(80, optimalCellSize);
+
+        layout.cellSize = new Size(finalCellSize, finalCellSize);
+        this._cellSize = finalCellSize;
+
+        console.log(`[Grid] gridRoot: ${gridTransform.width}x${gridTransform.height}, grid: ${level.width}x${level.height}, cellSize: ${finalCellSize}, constraintNum: ${layout.constraintNum}`);
+      }
+    }
+
+    // 创建 Tile 节点（从上到下，从左到右）
+    // 注意：Layout 的 Vertical Direction 是 TOP_TO_BOTTOM，所以需要从 y=height-1 开始
+    for (let y = level.height - 1; y >= 0; y--) {
       for (let x = 0; x < level.width; x++) {
         const idx = y * level.width + x;
         const tileNode = instantiate(this._tilePrefab);
         tileNode.name = `Tile_${x}_${y}`;
         tileNode.parent = this.gridRoot;
-        const ui = tileNode.getComponent(UITransform) ?? tileNode.addComponent(UITransform);
-        ui.setContentSize(this._cellSize, this._cellSize);
-        tileNode.setPosition(
-          origin.x + (x - (level.width - 1) / 2) * this._cellSize,
-          origin.y + (y - (level.height - 1) / 2) * this._cellSize
-        );
+        // Layout 的 CHILDREN resize mode 会自动设置子节点尺寸
 
         this._tileNodes[idx] = tileNode;
         const tileComp = tileNode.getComponent(Tile) ?? tileNode.addComponent(Tile);
@@ -650,6 +686,11 @@ export class FindThePathGame extends Component {
         this._tileOccupiedCache[idx] = false;
         this.redrawTile(x, y, true);
       }
+    }
+
+    // 让 Layout 更新布局
+    if (layout) {
+      layout.updateLayout();
     }
   }
 
@@ -693,60 +734,82 @@ export class FindThePathGame extends Component {
    * 设置终点节点位置
    */
   private updateFinishNodePosition(level: LevelData): void {
-    if (!this.finishNode || !this.gridRoot) return;
+    if (!this.finishNode || !this.gridRoot || !this._runner) return;
+
+    // 获取目标格子的实际位置
+    const goalIdx = level.goal.y * level.width + level.goal.x;
+    const goalTileNode = this._tileNodes[goalIdx];
+    if (!goalTileNode) return;
 
     const dir = level.goal.dir;
     const vec = dirVec(dir);
-    const offsetDist = this._cellSize * 1.0;
+    // 终点更贴近格子边缘
+    const offsetDist = this._cellSize * 0.55;
 
-    const origin = new Vec3(0, 0, 0);
-    const cx = origin.x + (level.goal.x - (level.width - 1) / 2) * this._cellSize;
-    const cy = origin.y + (level.goal.y - (level.height - 1) / 2) * this._cellSize;
-
-    const px = cx + vec.x * offsetDist;
-    const py = cy + vec.y * offsetDist;
+    // 基于目标格子的实际位置计算终点位置
+    const tilePos = goalTileNode.getPosition();
+    const px = tilePos.x + vec.x * offsetDist;
+    const py = tilePos.y + vec.y * offsetDist;
 
     // 如果 finishNode 是 gridRoot 的子节点，直接设置位置
     if (this.finishNode.parent === this.gridRoot) {
       this.finishNode.setPosition(px, py, 0);
     } else {
       // 否则需要转换到世界坐标
-      const gridUi = this.gridRoot.getComponent(UITransform);
-      if (gridUi) {
-        const localPos = new Vec3(px, py, 0);
-        const worldPos = gridUi.convertToWorldSpaceAR(localPos);
-        this.finishNode.setWorldPosition(worldPos);
-        this.finishNode.setScale(this._gridScale, this._gridScale, 1);
-      }
+      const goalWorldPos = goalTileNode.getWorldPosition();
+      const worldPx = goalWorldPos.x + vec.x * offsetDist;
+      const worldPy = goalWorldPos.y + vec.y * offsetDist;
+      this.finishNode.setWorldPosition(new Vec3(worldPx, worldPy, 0));
     }
 
     this.finishNode.active = true;
   }
 
   private refreshCar(): void {
-    if (!this._runner || !this.carNode) return;
-    const r = this._runner.getCarRender(new Vec3(0, 0, 0));
-    if (!this.gridRoot) {
-      this.carNode.setPosition(r.pos);
-      this.carNode.setScale(1, 1, 1);
-    } else if (this.carNode.parent === this.gridRoot) {
-      this.carNode.setPosition(r.pos);
-      this.carNode.setScale(1, 1, 1);
+    if (!this._runner || !this.carNode || !this.gridRoot) return;
+
+    // 获取小车的网格坐标（可能是小数）
+    const carX = this._runner.carX;
+    const carY = this._runner.carY;
+    const carAngle = this._runner.carAngle;
+
+    // 获取第一个格子 (0, height-1) 的位置作为参考点
+    const firstTileIdx = (this._runner.height - 1) * this._runner.width + 0;
+    const firstTile = this._tileNodes[firstTileIdx];
+    if (!firstTile) return;
+
+    const firstTilePos = firstTile.getPosition();
+
+    // 计算小车相对于第一个格子的偏移
+    // 在逻辑坐标中：第一个格子是 (0, height-1)
+    // 小车在 (carX, carY)，相对于第一个格子的偏移是：
+    // dx = carX - 0 = carX
+    // dy = carY - (height-1) = carY - height + 1
+    const dx = carX;
+    const dy = carY - (this._runner.height - 1);
+
+    // 在 Layout 坐标中：
+    // X 方向：向右增加，与逻辑坐标相同
+    // Y 方向：逻辑Y减小时，视觉Y也减小（向下）
+    // dy 为负表示小车在 firstTile 下方，所以 +dy 会使 Y 变小
+    const carPos = new Vec3(
+      firstTilePos.x + dx * this._cellSize,
+      firstTilePos.y + dy * this._cellSize,
+      0
+    );
+
+    // 设置小车位置
+    if (this.carNode.parent === this.gridRoot) {
+      this.carNode.setPosition(carPos);
     } else {
+      // 转换到世界坐标
       const gridUi = this.gridRoot.getComponent(UITransform);
       if (gridUi) {
-        const worldPos = gridUi.convertToWorldSpaceAR(r.pos);
+        const worldPos = gridUi.convertToWorldSpaceAR(carPos);
         this.carNode.setWorldPosition(worldPos);
-      } else {
-        this.carNode.setPosition(
-          this.gridRoot.position.x + r.pos.x * this._gridScale,
-          this.gridRoot.position.y + r.pos.y * this._gridScale,
-          0
-        );
       }
-      this.carNode.setScale(this._gridScale, this._gridScale, 1);
     }
-    this.carNode.angle = r.angle;
+    this.carNode.angle = carAngle;
   }
 
   private refreshHud(statusOverride?: string): void {
@@ -771,41 +834,7 @@ export class FindThePathGame extends Component {
     }
   }
 
-  private calculateAndApplyScale(level: LevelData, canvasWidth: number, canvasHeight: number): void {
-    if (!this.gridRoot) return;
-
-    // 计算基于基础格子大小的网格尺寸
-    const baseGridWidth = level.width * this._baseCellSize;
-    const baseGridHeight = level.height * this._baseCellSize;
-
-    // 增加可用空间比例（使用85%的屏幕空间）
-    const padding = 0.85;
-    const availableWidth = canvasWidth * padding;
-    const availableHeight = canvasHeight * padding;
-
-    // 计算缩放比例以适应屏幕
-    const scaleX = availableWidth / baseGridWidth;
-    const scaleY = availableHeight / baseGridHeight;
-    let scale = Math.min(scaleX, scaleY);
-
-    // 计算实际格子大小
-    const actualCellSize = this._baseCellSize * scale;
-
-    // 确保格子不会太小（触控友好）
-    if (actualCellSize < this._minCellSize) {
-      scale = this._minCellSize / this._baseCellSize;
-    }
-
-    // 允许适度放大以填满屏幕（最大放大2倍）
-    const maxScale = 2.0;
-    scale = Math.min(maxScale, scale);
-
-    this._gridScale = scale;
-    this._cellSize = this._baseCellSize; // 保持基础格子大小，通过缩放实现
-
-    // Apply scale to gridRoot
-    this.gridRoot.setScale(scale, scale, 1);
-  }
+  // calculateAndApplyScale 已移除，Layout 组件现在处理缩放
 
   private loadPrefab(bundleName: string, prefabPath: string): Promise<Prefab | null> {
     return new Promise((resolve) => {
