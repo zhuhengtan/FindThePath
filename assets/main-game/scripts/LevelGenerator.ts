@@ -139,15 +139,64 @@ export class LevelGenerator {
         maxCells = 4 + tier * 2;
     }
 
-    const maxWidth = Math.floor(this._config.canvasWidth / this._config.cellSize);
-    const maxHeight = Math.floor(this._config.canvasHeight / this._config.cellSize);
+    minCells = Math.max(3, minCells);
+    maxCells = Math.max(minCells, maxCells);
 
-    this._width = Math.min(maxCells, Math.max(minCells, maxWidth));
-    this._height = Math.min(maxCells, Math.max(minCells, maxHeight));
+    const minTilePx = 80;
+    const maxWidthByMinTile = Math.max(3, Math.floor(this._config.canvasWidth / minTilePx));
+    const maxHeightByMinTile = Math.max(3, Math.floor(this._config.canvasHeight / minTilePx));
 
-    // Ensure minimum size
-    this._width = Math.max(3, this._width);
-    this._height = Math.max(3, this._height);
+    const maxW = Math.min(maxCells, maxWidthByMinTile);
+    const maxH = Math.min(maxCells, maxHeightByMinTile);
+
+    const canvasW = Math.max(1, this._config.canvasWidth);
+    const canvasH = Math.max(1, this._config.canvasHeight);
+    const aspect = canvasW / canvasH;
+
+    let bestW = minCells;
+    let bestH = minCells;
+    let bestUsedArea = -1;
+    let bestTileSize = -1;
+    let bestAspectDiff = Number.POSITIVE_INFINITY;
+
+    for (let h = minCells; h <= maxH; h++) {
+      for (let w = minCells; w <= maxW; w++) {
+        const tileSize = Math.min(canvasW / w, canvasH / h);
+        const usedArea = tileSize * tileSize * w * h;
+        const aspectDiff = Math.abs(w / h - aspect);
+
+        let score = usedArea;
+        if (aspect >= 1.1 && w < h) score *= 0.98;
+        if (aspect <= 0.9 && h < w) score *= 0.98;
+
+        if (score > bestUsedArea + 1e-6) {
+          bestUsedArea = score;
+          bestTileSize = tileSize;
+          bestAspectDiff = aspectDiff;
+          bestW = w;
+          bestH = h;
+          continue;
+        }
+
+        if (Math.abs(score - bestUsedArea) <= 1e-6) {
+          if (tileSize > bestTileSize + 1e-6) {
+            bestTileSize = tileSize;
+            bestAspectDiff = aspectDiff;
+            bestW = w;
+            bestH = h;
+            continue;
+          }
+          if (Math.abs(tileSize - bestTileSize) <= 1e-6 && aspectDiff < bestAspectDiff) {
+            bestAspectDiff = aspectDiff;
+            bestW = w;
+            bestH = h;
+          }
+        }
+      }
+    }
+
+    this._width = Math.max(3, bestW);
+    this._height = Math.max(3, bestH);
   }
 
   private initializeGrid(): void {
