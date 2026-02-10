@@ -543,7 +543,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": 174.8,
+      "y": -125.2,
       "z": 0
     },
     "_lrot": {
@@ -667,7 +667,7 @@
     "_target": null,
     "_left": 40,
     "_right": 0,
-    "_top": 160,
+    "_top": 460,
     "_bottom": 0,
     "_horizontalCenter": 0,
     "_verticalCenter": 0,
@@ -939,7 +939,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 260.5,
-      "y": 256,
+      "y": 8,
       "z": 0
     },
     "_lrot": {
@@ -1753,7 +1753,7 @@
     "_target": null,
     "_left": 0,
     "_right": 80,
-    "_top": 40,
+    "_top": 288,
     "_bottom": 0,
     "_horizontalCenter": 200,
     "_verticalCenter": 0,
@@ -1771,7 +1771,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "icon_setting",
+    "_name": "Setting",
     "_objFlags": 0,
     "__editorExtras__": {},
     "_parent": {
@@ -1794,7 +1794,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": -496,
-      "y": 256,
+      "y": 8,
       "z": 0
     },
     "_lrot": {
@@ -1895,7 +1895,7 @@
     "_target": null,
     "_left": 80,
     "_right": 0,
-    "_top": 40,
+    "_top": 288,
     "_bottom": 0,
     "_horizontalCenter": 0,
     "_verticalCenter": 0,
