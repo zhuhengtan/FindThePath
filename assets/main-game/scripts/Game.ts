@@ -1,6 +1,7 @@
 import {
   _decorator,
   assetManager,
+  Color,
   Component,
   instantiate,
   Label,
@@ -8,6 +9,7 @@ import {
   Node,
   Prefab,
   Size,
+  Sprite,
   UITransform,
   Vec3,
 } from "cc";
@@ -106,7 +108,7 @@ function otherSide(mask: number, entrySide: Direction): Direction | null {
 const BASE_MASK: Record<TileType, number> = {
   I: dirBit(Direction.Up) | dirBit(Direction.Down),
   L: dirBit(Direction.Up) | dirBit(Direction.Right),
-  T: dirBit(Direction.Up) | dirBit(Direction.Left) | dirBit(Direction.Right),
+  T: dirBit(Direction.Right) | dirBit(Direction.Down) | dirBit(Direction.Left),
   X: dirBit(Direction.Up) | dirBit(Direction.Right) | dirBit(Direction.Down) | dirBit(Direction.Left),
 };
 
@@ -168,7 +170,7 @@ class LevelRunner {
   private readonly _startX: number;
   private readonly _startY: number;
   private readonly _tiles: TileState[];
-  private readonly _cellSize: number;
+  private _cellSize: number;
   private readonly _carSpeedPx: number;
 
   // Car State
@@ -234,6 +236,11 @@ class LevelRunner {
       state: "MOVING_TO_CENTER",
       moveDir: startDir,
     };
+  }
+
+  /** Update the cell size (e.g. after grid rebuild recalculates it) */
+  public setCellSize(cellSize: number): void {
+    this._cellSize = cellSize;
   }
 
   // --- External Accessors ---
@@ -421,24 +428,139 @@ class LevelRunner {
     const tile = this.getTile(x, y);
     if (!tile || tile.blocked) return entrySide;
 
-    // If entered side is closed, bounce immediately (should not happen with canEnter check)
     const mask = tileMask(tile.type, tile.rot);
     if (!hasDir(mask, entrySide)) return entrySide;
 
-    const out = otherSide(mask, entrySide);
-    if (out !== null) return out;
+    // Collect all valid exit directions (exclude entry side)
+    const exitDirs: Direction[] = [];
+    for (let d = 0; d < 4; d++) {
+      const dir = d as Direction;
+      if (dir === entrySide) continue; // can't exit through entry
+      if (hasDir(mask, dir)) exitDirs.push(dir);
+    }
 
-    // Fallbacks
-    const forward = oppositeDir(entrySide);
-    if (hasDir(mask, forward)) return forward;
+    if (exitDirs.length === 0) return entrySide; // dead-end, bounce back
+    if (exitDirs.length === 1) return exitDirs[0]; // only one exit
 
-    const right = ((forward + 1) % 4) as Direction;
-    if (hasDir(mask, right)) return right;
+    // Multiple exits (T or X junction):
+    // Priority 1: choose the direction that can reach the goal (shortest distance wins)
+    // Priority 2: if no direction reaches the goal, choose the longest reachable path
+    let goalDir: Direction | null = null;
+    let goalDist = Infinity;
+    let longestDir = exitDirs[0];
+    let longestLen = -1;
 
-    const left = ((forward + 3) % 4) as Direction;
-    if (hasDir(mask, left)) return left;
+    for (const dir of exitDirs) {
+      const nx = x + dirVec(dir).x;
+      const ny = y + dirVec(dir).y;
+      const visited = new Set<string>();
+      visited.add(`${x},${y}`);
 
-    return entrySide;
+      // Check if this direction can reach the goal
+      const dist = this.dfsDistanceToGoal(nx, ny, oppositeDir(dir), visited);
+      if (dist >= 0 && dist < goalDist) {
+        goalDist = dist;
+        goalDir = dir;
+      }
+
+      // Also measure total reachable path length (for fallback)
+      visited.clear();
+      visited.add(`${x},${y}`);
+      const len = this.dfsPathLength(nx, ny, oppositeDir(dir), visited);
+      if (len > longestLen) {
+        longestLen = len;
+        longestDir = dir;
+      }
+    }
+
+    // If any direction reaches the goal, prefer it
+    if (goalDir !== null) return goalDir;
+    // Otherwise explore the longest branch
+    return longestDir;
+  }
+
+  /**
+   * DFS to find the shortest distance to the goal tile from (x, y) entering from entrySide.
+   * Returns the distance (number of tiles) if the goal is reachable, or -1 if not reachable.
+   * "Reaching the goal" means arriving at the goal tile AND being able to exit the map from it.
+   */
+  private dfsDistanceToGoal(x: number, y: number, entrySide: Direction, visited: Set<string>): number {
+    if (!this.inBounds(x, y)) return -1;
+    const key = `${x},${y}`;
+    if (visited.has(key)) return -1;
+
+    const tile = this.getTile(x, y);
+    if (!tile || tile.blocked) return -1;
+
+    const mask = tileMask(tile.type, tile.rot);
+    if (!hasDir(mask, entrySide)) return -1;
+
+    // Check if this IS the goal tile and can exit the map
+    if (x === this._goalX && y === this._goalY) {
+      // Check if any exit leads out of bounds (= goal exit)
+      for (let d = 0; d < 4; d++) {
+        const dir = d as Direction;
+        if (dir === entrySide) continue;
+        if (!hasDir(mask, dir)) continue;
+        const nx = x + dirVec(dir).x;
+        const ny = y + dirVec(dir).y;
+        if (!this.inBounds(nx, ny)) return 1; // Found the goal exit!
+      }
+    }
+
+    visited.add(key);
+
+    let bestChildDist = -1;
+    for (let d = 0; d < 4; d++) {
+      const dir = d as Direction;
+      if (dir === entrySide) continue;
+      if (!hasDir(mask, dir)) continue;
+
+      const nx = x + dirVec(dir).x;
+      const ny = y + dirVec(dir).y;
+      const childDist = this.dfsDistanceToGoal(nx, ny, oppositeDir(dir), visited);
+      if (childDist >= 0 && (bestChildDist < 0 || childDist < bestChildDist)) {
+        bestChildDist = childDist;
+      }
+    }
+
+    visited.delete(key);
+    return bestChildDist >= 0 ? 1 + bestChildDist : -1;
+  }
+
+  /**
+   * DFS to measure the maximum reachable path length from (x, y) entering from entrySide.
+   * Returns the number of reachable tiles (including the starting tile).
+   * For tiles with multiple exits, recursively explores all branches and returns the max.
+   */
+  private dfsPathLength(x: number, y: number, entrySide: Direction, visited: Set<string>): number {
+    if (!this.inBounds(x, y)) return 0;
+    const key = `${x},${y}`;
+    if (visited.has(key)) return 0;
+
+    const tile = this.getTile(x, y);
+    if (!tile || tile.blocked) return 0;
+
+    const mask = tileMask(tile.type, tile.rot);
+    if (!hasDir(mask, entrySide)) return 0; // can't enter from this side
+
+    visited.add(key);
+
+    // Find all exits from this tile (excluding entry)
+    let maxChildLen = 0;
+    for (let d = 0; d < 4; d++) {
+      const dir = d as Direction;
+      if (dir === entrySide) continue;
+      if (!hasDir(mask, dir)) continue;
+
+      const nx = x + dirVec(dir).x;
+      const ny = y + dirVec(dir).y;
+      const childLen = this.dfsPathLength(nx, ny, oppositeDir(dir), visited);
+      if (childLen > maxChildLen) maxChildLen = childLen;
+    }
+
+    visited.delete(key); // backtrack for other branches
+    return 1 + maxChildLen;
   }
 
   private cellCenter(origin: Vec3, gx: number, gy: number): Vec3 {
@@ -452,8 +574,8 @@ class LevelRunner {
   }
 }
 
-@ccclass("FindThePathGame")
-export class FindThePathGame extends Component {
+@ccclass("Game")
+export class Game extends Component {
   // 基础格子大小（用于布局计算）
   private readonly _baseCellSize = 96;
   // 实际使用的格子大小（会根据屏幕动态调整）
@@ -478,6 +600,16 @@ export class FindThePathGame extends Component {
   @property
   public carSpeed: number = 180;
 
+  // --- 速度控制按钮 ---
+  @property(Node)
+  public playBtn: Node | null = null;
+
+  @property(Node)
+  public fastForwardBtn: Node | null = null;
+
+  @property(Node)
+  public fastestBtn: Node | null = null;
+
   private _runner: LevelRunner | null = null;
   private _levelNumber: number = 1;
   private _tileNodes: Node[] = [];
@@ -491,11 +623,13 @@ export class FindThePathGame extends Component {
   private _isLevelFinished: boolean = false;
   private readonly _storageKey = "FindThePath_CurrentLevel";
   private readonly _levelDataKey = "FindThePath_LevelData";
+  private readonly _speedKey = "FindThePath_SpeedMultiplier";
   // 缓存画布尺寸，确保一致性
   private _cachedCanvasWidth: number = 0;
   private _cachedCanvasHeight: number = 0;
 
   private _tileVisualSize: number = 100;
+  private _speedMultiplier: number = 1;
   private _carBaseScale: Vec3 | null = null;
   private _finishBaseScale: Vec3 | null = null;
 
@@ -540,8 +674,10 @@ export class FindThePathGame extends Component {
   protected onLoad(): void {
     const savedLevel = StorageManager.getItem<number>(this._storageKey, 1);
     this._levelNumber = savedLevel;
+    this._speedMultiplier = StorageManager.getItem<number>(this._speedKey, 1);
     this.ensureCarBaseScale();
     this.ensureFinishBaseScale();
+    this.updateSpeedButtons();
   }
 
   protected start(): void {
@@ -608,6 +744,9 @@ export class FindThePathGame extends Component {
 
     this.buildGrid(level);
 
+    // buildGrid 会重新计算 _cellSize，需要同步给 runner
+    this._runner.setCellSize(this._cellSize);
+
     // 重置 gridRoot 缩放（Layout 已经处理了尺寸）
     this.gridRoot?.setScale(1, 1, 1);
     this._gridScale = 1;
@@ -641,7 +780,7 @@ export class FindThePathGame extends Component {
 
   protected update(dt: number): void {
     if (!this._runner) return;
-    this._runner.update(dt);
+    this._runner.update(dt * this._speedMultiplier);
     this.refreshCar();
     this.refreshTilesOccupied();
     this.refreshHud();
@@ -666,6 +805,53 @@ export class FindThePathGame extends Component {
 
   public restart(): void {
     void this.initLevel();
+  }
+
+  // --- 速度控制 ---
+
+  /** 切换到正常速度（1x） */
+  public onClickPlay(): void {
+    this._speedMultiplier = 1;
+    StorageManager.setItem(this._speedKey, 1);
+    this.updateSpeedButtons();
+  }
+
+  /** 切换到快进速度（2x） */
+  public onClickFastForward(): void {
+    this._speedMultiplier = 2;
+    StorageManager.setItem(this._speedKey, 2);
+    this.updateSpeedButtons();
+  }
+  /** 切换到快进速度（2x） */
+  public onClickFastestForward(): void {
+    this._speedMultiplier = 3;
+    StorageManager.setItem(this._speedKey, 3);
+    this.updateSpeedButtons();
+  }
+
+  /** 根据当前速度倍率更新按钮显示状态 */
+  private updateSpeedButtons(): void {
+    const activeColor = new Color(245, 200, 66, 255);
+    const inactiveColor = new Color(0, 0, 0, 255);
+
+    if (this.playBtn) {
+      const sprite = this.playBtn.getComponent(Sprite);
+      if (sprite) {
+        sprite.color = this._speedMultiplier === 1 ? activeColor : inactiveColor;
+      }
+    }
+    if (this.fastForwardBtn) {
+      const sprite = this.fastForwardBtn.getComponent(Sprite);
+      if (sprite) {
+        sprite.color = this._speedMultiplier === 2 ? activeColor : inactiveColor;
+      }
+    }
+    if (this.fastestBtn) {
+      const sprite = this.fastestBtn.getComponent(Sprite);
+      if (sprite) {
+        sprite.color = this._speedMultiplier === 3 ? activeColor : inactiveColor;
+      }
+    }
   }
 
   private buildGrid(level: LevelData): void {

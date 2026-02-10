@@ -156,10 +156,10 @@ export class Tile extends Component {
         gfx.moveTo(0, 0);
         gfx.lineTo(half - 10, 0);
       } else if (data.type === "T") {
-        // T-shape: Up, Left, Right
-        gfx.lineTo(0, half - 10);
-        gfx.moveTo(0, 0);
+        // T-shape: Right, Down, Left (matching BASE_MASK and T.png sprite)
         gfx.lineTo(half - 10, 0);
+        gfx.moveTo(0, 0);
+        gfx.lineTo(0, -half + 10);
         gfx.moveTo(0, 0);
         gfx.lineTo(-half + 10, 0);
       } else {
