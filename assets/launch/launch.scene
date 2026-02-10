@@ -452,7 +452,7 @@
       "b": 255,
       "a": 255
     },
-    "_string": "开到终点",
+    "_string": "此路未通",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
     "_actualFontSize": 177.375,
