@@ -901,7 +901,7 @@
     "_lpos": {
       "__type__": "cc.Vec3",
       "x": 0,
-      "y": -290,
+      "y": -188,
       "z": 0
     },
     "_lrot": {
@@ -987,8 +987,8 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 800,
-      "height": 100
+      "width": 1200,
+      "height": 200
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -1096,8 +1096,8 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 671.905184659091,
-      "height": 90.39999999999999
+      "width": 1007.9522330866808,
+      "height": 99.43999999999998
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -1129,10 +1129,10 @@
     "_string": "抵制不良游戏，拒绝盗版游戏。注意自我保护，谨防受骗上当。\n适度游戏益脑，沉迷游戏伤身。合理安排时间，享受健康生活。",
     "_horizontalAlign": 1,
     "_verticalAlign": 1,
-    "_actualFontSize": 35.474999999999994,
-    "_fontSize": 24,
+    "_actualFontSize": 53.2125,
+    "_fontSize": 36,
     "_fontFamily": "Arial",
-    "_lineHeight": 40,
+    "_lineHeight": 44,
     "_overflow": 0,
     "_enableWrapText": true,
     "_font": null,
@@ -1180,8 +1180,8 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 100,
-      "height": 100
+      "width": 1200,
+      "height": 200
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",
@@ -1205,13 +1205,13 @@
     "_left": 0,
     "_right": 0,
     "_top": 0,
-    "_bottom": 20,
+    "_bottom": 0.1,
     "_horizontalCenter": 0,
     "_verticalCenter": 0,
     "_isAbsLeft": true,
     "_isAbsRight": true,
     "_isAbsTop": true,
-    "_isAbsBottom": true,
+    "_isAbsBottom": false,
     "_isAbsHorizontalCenter": true,
     "_isAbsVerticalCenter": true,
     "_originalWidth": 0,
