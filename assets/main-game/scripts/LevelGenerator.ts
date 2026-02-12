@@ -59,6 +59,7 @@ export class LevelGenerator {
     const tiles = this.createTilesFromPath();
     this.addObfuscation(tiles);
     const shuffledTiles = this.shuffleTiles(tiles);
+    this.ensurePathBroken(shuffledTiles);
     if (this._difficulty === "hell") {
       this.applyHellRedirects(shuffledTiles);
     }
@@ -915,6 +916,85 @@ export class LevelGenerator {
       }
     }
     return count;
+  }
+
+  /**
+   * 检查给定 tile 类型 + 旋转是否在指定方向有开口。
+   *
+   * 各类型基础开口方向（rot=0）：
+   * - I: Up, Down
+   * - L: Up, Right
+   * - T: Right, Down, Left
+   * - X: Up, Right, Down, Left
+   */
+  private tileHasDir(type: TileType, rot: number, dir: Direction): boolean {
+    const baseOpenings: Record<TileType, Direction[]> = {
+      I: [Direction.Up, Direction.Down],
+      L: [Direction.Up, Direction.Right],
+      T: [Direction.Right, Direction.Down, Direction.Left],
+      X: [Direction.Up, Direction.Right, Direction.Down, Direction.Left],
+    };
+    return baseOpenings[type].some(base => (base + rot) % 4 === dir);
+  }
+
+  /**
+   * 打乱后验证：确保主路径上至少有部分格子的连通被打断。
+   * 对于每个路径节点（排除起点终点），如果当前旋转仍然同时保持入口和出口方向开放，
+   * 说明小车仍能通过，需要强制旋转到一个能阻断入口或出口的角度。
+   */
+  private ensurePathBroken(tiles: Array<{ x: number; y: number; type: TileType; rot: number }>): void {
+    const start = this._path[0];
+    const goal = this._path[this._path.length - 1];
+    const startKey = `${start.x},${start.y}`;
+    const goalKey = `${goal.x},${goal.y}`;
+
+    for (let i = 1; i < this._path.length - 1; i++) {
+      const node = this._path[i];
+      const key = `${node.x},${node.y}`;
+      if (key === startKey || key === goalKey) continue;
+
+      const tile = tiles.find(t => `${t.x},${t.y}` === key);
+      if (!tile) continue;
+
+      const correctRot = this._correctRotations.get(key);
+      if (correctRot === undefined) continue;
+
+      // X 型始终四方向连通，无法阻断
+      if (tile.type === "X") continue;
+
+      // 如果已经是正确旋转，跳过（shuffle 应该已经处理了）
+      // 对 I 型检查等效旋转
+      if (tile.type === "I" && (tile.rot % 2) === (correctRot % 2)) continue;
+      if (tile.type !== "I" && tile.rot === correctRot) continue;
+
+      // 获取该节点在主路径上的入口和出口方向
+      const entryDir = node.fromDir;
+      if (i >= this._path.length - 1) continue;
+      const exitDir = this.oppositeDir(this._path[i + 1].fromDir);
+
+      // 检查当前旋转是否仍然同时开放入口和出口
+      const entryOpen = this.tileHasDir(tile.type, tile.rot, entryDir);
+      const exitOpen = this.tileHasDir(tile.type, tile.rot, exitDir);
+
+      if (entryOpen && exitOpen) {
+        // 路径仍然连通！需要找到一个能阻断的旋转
+        for (let r = 0; r < 4; r++) {
+          // 不能用正确旋转
+          if (r === correctRot) continue;
+          // I 型跳过等效旋转
+          if (tile.type === "I" && (r % 2) === (correctRot % 2)) continue;
+
+          const testEntry = this.tileHasDir(tile.type, r, entryDir);
+          const testExit = this.tileHasDir(tile.type, r, exitDir);
+
+          if (!testEntry || !testExit) {
+            // 找到一个能阻断路径的旋转
+            tile.rot = r;
+            break;
+          }
+        }
+      }
+    }
   }
 
   /**
